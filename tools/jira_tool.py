@@ -17,73 +17,148 @@ headers = {
 }
 
 
-def build_jira_description(user_story: str, test_case_text: str) -> dict:
+def parse_test_case_sections(test_case_text: str) -> dict:
     """
-    Builds a properly structured Jira ADF (Atlassian Document Format) description.
-    Separates user story, test steps, and code into clean sections.
+    Parses a test case block into structured sections.
+    Returns a dict with keys: type, priority, preconditions, 
+    test_data, steps, expected_result
     """
+    sections = {
+        "type": "",
+        "priority": "",
+        "preconditions": "",
+        "test_data": [],
+        "steps": [],
+        "expected_result": ""
+    }
 
-    # Split into lines for processing
-    lines = test_case_text.strip().split("\n")
+    current_section = None
+    lines = test_case_text.split("\n")
+
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("##"):
+            continue
+
+        # Detect sections
+        if line.startswith("- Type:"):
+            sections["type"] = line.replace("- Type:", "").strip()
+        elif line.startswith("- Priority:"):
+            sections["priority"] = line.replace("- Priority:", "").strip()
+        elif line.startswith("- Preconditions:"):
+            sections["preconditions"] = line.replace("- Preconditions:", "").strip()
+            current_section = "preconditions"
+        elif line.startswith("- Test Data:"):
+            current_section = "test_data"
+        elif line.startswith("- Steps:"):
+            current_section = "steps"
+        elif line.startswith("- Expected Result:"):
+            sections["expected_result"] = line.replace("- Expected Result:", "").strip()
+            current_section = "expected_result"
+        elif current_section == "test_data" and line.startswith("*"):
+            sections["test_data"].append(line.replace("*", "").strip())
+        elif current_section == "steps" and line[0].isdigit():
+            sections["steps"].append(line)
+        elif current_section == "expected_result" and sections["expected_result"] == "":
+            sections["expected_result"] = line
+
+    return sections
+
+
+def build_jira_description(sections: dict) -> dict:
+    """
+    Builds a clean Jira ADF description from parsed sections.
+    No code blocks — only structured readable content.
+    """
 
     content_blocks = []
 
-    # ── User Story Section ──
+    # ── Test Info Section ──
     content_blocks.append({
         "type": "heading",
         "attrs": {"level": 3},
-        "content": [{"type": "text", "text": "User Story"}]
+        "content": [{"type": "text", "text": "Test Information"}]
     })
     content_blocks.append({
         "type": "paragraph",
-        "content": [{"type": "text", "text": user_story.strip()}]
+        "content": [
+            {"type": "text", "text": "Type: ", "marks": [{"type": "strong"}]},
+            {"type": "text", "text": sections["type"]}
+        ]
     })
-
-    # ── Test Case Details Section ──
     content_blocks.append({
-        "type": "heading",
-        "attrs": {"level": 3},
-        "content": [{"type": "text", "text": "Test Case Details"}]
+        "type": "paragraph",
+        "content": [
+            {"type": "text", "text": "Priority: ", "marks": [{"type": "strong"}]},
+            {"type": "text", "text": sections["priority"]}
+        ]
     })
 
-    # Process lines — detect code blocks separately
-    in_code_block = False
-    code_lines = []
-    paragraph_lines = []
+    # ── Preconditions ──
+    if sections["preconditions"]:
+        content_blocks.append({
+            "type": "heading",
+            "attrs": {"level": 3},
+            "content": [{"type": "text", "text": "Preconditions"}]
+        })
+        content_blocks.append({
+            "type": "paragraph",
+            "content": [{"type": "text", "text": sections["preconditions"]}]
+        })
 
-    def flush_paragraph(blocks, lines):
-        """Push accumulated paragraph lines as a block."""
-        text = "\n".join(lines).strip()
-        if text:
-            blocks.append({
-                "type": "paragraph",
-                "content": [{"type": "text", "text": text}]
+    # ── Test Data ──
+    if sections["test_data"]:
+        content_blocks.append({
+            "type": "heading",
+            "attrs": {"level": 3},
+            "content": [{"type": "text", "text": "Test Data"}]
+        })
+        test_data_items = []
+        for item in sections["test_data"]:
+            test_data_items.append({
+                "type": "listItem",
+                "content": [{
+                    "type": "paragraph",
+                    "content": [{"type": "text", "text": item}]
+                }]
             })
+        content_blocks.append({
+            "type": "bulletList",
+            "content": test_data_items
+        })
 
-    for line in lines:
-        if line.strip().startswith("```"):
-            if not in_code_block:
-                # Flush any pending paragraph first
-                flush_paragraph(content_blocks, paragraph_lines)
-                paragraph_lines = []
-                in_code_block = True
-                code_lines = []
-            else:
-                # End of code block — flush it
-                in_code_block = False
-                content_blocks.append({
-                    "type": "codeBlock",
-                    "attrs": {"language": "javascript"},
-                    "content": [{"type": "text", "text": "\n".join(code_lines)}]
-                })
-                code_lines = []
-        elif in_code_block:
-            code_lines.append(line)
-        else:
-            paragraph_lines.append(line)
+    # ── Steps ──
+    if sections["steps"]:
+        content_blocks.append({
+            "type": "heading",
+            "attrs": {"level": 3},
+            "content": [{"type": "text", "text": "Test Steps"}]
+        })
+        step_items = []
+        for step in sections["steps"]:
+            step_items.append({
+                "type": "listItem",
+                "content": [{
+                    "type": "paragraph",
+                    "content": [{"type": "text", "text": step}]
+                }]
+            })
+        content_blocks.append({
+            "type": "orderedList",
+            "content": step_items
+        })
 
-    # Flush any remaining paragraph lines
-    flush_paragraph(content_blocks, paragraph_lines)
+    # ── Expected Result ──
+    if sections["expected_result"]:
+        content_blocks.append({
+            "type": "heading",
+            "attrs": {"level": 3},
+            "content": [{"type": "text", "text": "Expected Result"}]
+        })
+        content_blocks.append({
+            "type": "paragraph",
+            "content": [{"type": "text", "text": sections["expected_result"]}]
+        })
 
     return {
         "type": "doc",
@@ -92,9 +167,9 @@ def build_jira_description(user_story: str, test_case_text: str) -> dict:
     }
 
 
-def create_jira_ticket(summary: str, user_story: str, test_case_text: str, issue_type: str = "Task") -> dict:
+def create_jira_ticket(summary: str, sections: dict, issue_type: str = "Task") -> dict:
     """
-    Creates a Jira ticket with properly formatted description.
+    Creates a clean Jira ticket with structured description.
     """
 
     url = f"{JIRA_BASE_URL}/rest/api/3/issue"
@@ -103,7 +178,7 @@ def create_jira_ticket(summary: str, user_story: str, test_case_text: str, issue
         "fields": {
             "project": {"key": JIRA_PROJECT_KEY},
             "summary": summary,
-            "description": build_jira_description(user_story, test_case_text),
+            "description": build_jira_description(sections),
             "issuetype": {"name": issue_type}
         }
     }
@@ -121,7 +196,7 @@ def create_jira_ticket(summary: str, user_story: str, test_case_text: str, issue
 
 def log_test_cases_to_jira(user_story: str, test_cases_text: str) -> list:
     """
-    Parses generated test cases and logs each one as a separate Jira ticket.
+    Parses generated test cases and logs each as a clean Jira ticket.
     """
 
     sections = test_cases_text.split("## TEST CASE")
@@ -132,7 +207,7 @@ def log_test_cases_to_jira(user_story: str, test_cases_text: str) -> list:
         if not section:
             continue
 
-        # Extract title from first line
+        # Extract title
         lines = section.split("\n")
         first_line = lines[0].strip()
 
@@ -141,15 +216,15 @@ def log_test_cases_to_jira(user_story: str, test_cases_text: str) -> list:
         else:
             title = first_line
 
-        # Remove markdown bold from title if present
         title = title.replace("**", "").strip()
-
         summary = f"[QA] {title}"
+
+        # Parse sections
+        parsed = parse_test_case_sections(section)
 
         result = create_jira_ticket(
             summary=summary,
-            user_story=user_story,
-            test_case_text=section,
+            sections=parsed,
             issue_type="Task"
         )
 
@@ -157,3 +232,29 @@ def log_test_cases_to_jira(user_story: str, test_cases_text: str) -> list:
             created_issues.append(result["issue_key"])
 
     return created_issues
+
+
+# Quick test
+if __name__ == "__main__":
+    test_sections = {
+        "type": "Positive",
+        "priority": "High",
+        "preconditions": "User must have an active account",
+        "test_data": [
+            "Email: testuser@example.com",
+            "Password: SecurePass123!",
+            "URL: /login"
+        ],
+        "steps": [
+            "1. Navigate to login page",
+            "2. Enter email and password",
+            "3. Click Login button"
+        ],
+        "expected_result": "User is redirected to dashboard"
+    }
+
+    result = create_jira_ticket(
+        summary="[QA] Smoke test ticket - clean format",
+        sections=test_sections
+    )
+    print(result)
