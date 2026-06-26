@@ -41,7 +41,7 @@ STRICT RULES:
 8. Be specific with test data — use realistic values not placeholders"""
 
     message = client.messages.create(
-        model="claude-opus-4-6",
+        model="claude-sonnet-4-6",
         max_tokens=2000,
         messages=[
             {
