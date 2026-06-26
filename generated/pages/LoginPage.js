@@ -1,56 +1,54 @@
-// LoginPage.js - Page Object Model for the Sauce Demo Login Page
+
+const { expect } = require('@playwright/test');
 
 class LoginPage {
   constructor(page) {
     this.page = page;
-
-    // Selectors using data-test attributes (preferred)
-    this.usernameInput = page.locator('[data-test="username"]');
-    this.passwordInput = page.locator('[data-test="password"]');
-    this.loginButton = page.locator('[data-test="login-button"]');
-    this.errorMessage = page.locator('[data-test="error"]');
-    this.errorMessageContainer = page.locator('.error-message-container');
+    this.url = 'https://www.saucedemo.com';
+    this.usernameInput = '[data-test="username"]';
+    this.passwordInput = '[data-test="password"]';
+    this.loginButton = '[data-test="login-button"]';
+    this.errorMessage = '[data-test="error"]';
+    this.inventoryContainer = '[data-test="inventory-container"]';
   }
 
-  // Navigate to the login page
   async navigate() {
-    await this.page.goto('https://www.saucedemo.com');
+    await this.page.goto(this.url);
   }
 
-  // Enter username in the username field
-  async enterUsername(username) {
-    await this.usernameInput.clear();
-    await this.usernameInput.fill(username);
+  async fillUsername(username) {
+    await this.page.fill(this.usernameInput, username);
   }
 
-  // Enter password in the password field
-  async enterPassword(password) {
-    await this.passwordInput.clear();
-    await this.passwordInput.fill(password);
+  async fillPassword(password) {
+    await this.page.fill(this.passwordInput, password);
   }
 
-  // Click the login button
-  async clickLoginButton() {
-    await this.loginButton.click();
+  async clickLogin() {
+    await this.page.click(this.loginButton);
   }
 
-  // Complete login action with username and password
   async login(username, password) {
-    await this.enterUsername(username);
-    await this.enterPassword(password);
-    await this.clickLoginButton();
+    await this.fillUsername(username);
+    await this.fillPassword(password);
+    await this.clickLogin();
   }
 
-  // Get error message text
   async getErrorMessage() {
-    return await this.errorMessage.textContent();
+    return await this.page.textContent(this.errorMessage);
   }
 
-  // Check if error message is visible
-  async isErrorMessageVisible() {
-    return await this.errorMessage.isVisible();
+  async assertLoggedIn() {
+    await expect(this.page).toHaveURL(/inventory/);
+    await expect(this.page.locator(this.inventoryContainer)).toBeVisible();
+  }
+
+  async assertErrorVisible(expectedText) {
+    await expect(this.page.locator(this.errorMessage)).toBeVisible();
+    if (expectedText) {
+      await expect(this.page.locator(this.errorMessage)).toContainText(expectedText);
+    }
   }
 }
 
 module.exports = LoginPage;
-

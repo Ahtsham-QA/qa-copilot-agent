@@ -3,42 +3,47 @@
     {
       "username": "standard_user",
       "password": "secret_sauce",
-      "description": "Successful login with valid credentials",
-      "expected_title": "Products"
+      "description": "Add two items with valid user",
+      "expected_title": "Products",
+      "item1": "sauce-labs-backpack",
+      "item2": "sauce-labs-bike-light"
     },
     {
       "username": "performance_glitch_user",
       "password": "secret_sauce",
-      "description": "Successful login after previously failed attempt",
-      "expected_title": "Products"
+      "description": "Add two items with glitch user",
+      "expected_title": "Products",
+      "item1": "sauce-labs-backpack",
+      "item2": "sauce-labs-bike-light"
+    },
+    {
+      "username": "standard_user",
+      "password": "secret_sauce",
+      "description": "Add two items and verify cart count",
+      "expected_title": "Products",
+      "item1": "sauce-labs-fleece-jacket",
+      "item2": "sauce-labs-onesie"
     }
   ],
   "invalid_data": [
     {
-      "username": "wrong_user",
-      "password": "wrong_pass",
-      "description": "Login fails with incorrect credentials",
-      "expected_error": "Username and password do not match"
+      "username": "",
+      "password": "",
+      "description": "Empty credentials cannot add to cart",
+      "expected_error": "Username is required"
     },
     {
       "username": "locked_out_user",
       "password": "secret_sauce",
-      "description": "Login fails for locked out user",
+      "description": "Locked user cannot add to cart",
       "expected_error": "Sorry, this user has been locked out"
-    },
-    {
-      "username": "",
-      "password": "",
-      "description": "Login fails when fields are empty",
-      "expected_error": "Username is required"
     }
   ],
   "edge_cases": [
     {
-      "username": "  standard_user  ",
+      "username": "standard_user",
       "password": "secret_sauce",
-      "description": "Login with leading trailing spaces",
-      "expected": "failure"
+      "description": "Cart persists after page refresh"
     }
   ]
 }
