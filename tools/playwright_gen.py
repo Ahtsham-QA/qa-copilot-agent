@@ -8,6 +8,21 @@ client = anthropic.Anthropic(
     api_key=os.getenv("ANTHROPIC_API_KEY")
 )
 
+
+def clean_code(text: str) -> str:
+    """
+    Removes markdown backticks from generated code.
+    """
+    text = text.strip()
+    if text.startswith("```javascript"):
+        text = text[len("```javascript"):].strip()
+    elif text.startswith("```"):
+        text = text[3:].strip()
+    if text.endswith("```"):
+        text = text[:-3].strip()
+    return text
+
+
 def generate_page_class(
     class_name: str,
     url: str
@@ -28,36 +43,52 @@ Class name: {class_name}
 App URL: {url}
 
 Rules:
-→ CommonJS (require/module.exports)
-→ constructor with page parameter
-→ All selectors as this.variables
-→ Methods for user actions
-→ No markdown
-→ No comments
-→ Minimal comments only
-→ No verbose explanations
-→ Short but complete tests
-→ Maximum 3 test scenarios
-→ Never sacrifice completion
-   for coverage
-→ Better to have 3 complete
-   tests than 6 incomplete
-   → Maximum 3 items in valid_data
-→ Maximum 3 items in invalid_data
-→ Maximum 2 items in edge_cases
-→ Keep descriptions short
-→ Must be complete valid JSON
-→ Never truncate mid-string
-→ Return ONLY valid JSON
+→ CommonJS module.exports syntax
+→ constructor(page) with this.page = page
+→ Use GENERIC selectors not specific item names
+→ No individual item methods
+→ Use index-based methods instead
+→ Maximum 10 selectors total
+→ Maximum 8 methods total
+→ No markdown backticks
+→ No ``` in output
 → Pure JavaScript only
-→ End with module.exports = {class_name};
+→ Always include these methods:
+   navigateTo(url)
+   fillInputByIndex(index, value)
+   clickSubmit()
+   getErrorMessageByIndex(index)
+   isErrorVisibleByIndex(index)
+   → Never use .clear() before .fill()
+→ fillInputByIndex must only use .fill() not .clear()
+→ Example: await this.inputs.nth(index).fill(value)
+→ Never add .clear() before .fill()
+→ Always use input:visible not input
+→ this.inputs = page.locator('input:visible')
+→ Use generic index based selectors
+→ Never specific item selectors
+→ Works on ANY web application
+→ Last line: module.exports = {class_name};
+
+GOOD EXAMPLE (generic):
+this.addToCartButtons = page.locator('[data-test^="add-to-cart"]');
+
+async addItemByIndex(index) {{
+  await this.addToCartButtons.nth(index).click();
+}}
+
+BAD EXAMPLE (too specific):
+this.addSauceLabsBackpackButton = page.locator(...)
+this.addSauceLabsBikeLightButton = page.locator(...)
 
 Return ONLY the JavaScript class.
 Nothing else."""
             }
         ]
     )
-    return message.content[0].text
+    return clean_code(message.content[0].text)
+            
+    
 
 
 def generate_spec_file(
@@ -71,7 +102,7 @@ def generate_spec_file(
     """
     message = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=2000,
+        max_tokens=4096,
         messages=[
             {
                 "role": "user",
@@ -90,18 +121,60 @@ Rules:
 → Use testData.invalid_data.forEach()
 → Maximum 3 tests per section
 → No markdown in output
+→ No ``` backticks anywhere
 → Every test fully complete
 → Every bracket must close
-→ Use string URL not regex
 → Pure JavaScript only
+→ First line must be require()
+→ Test data fields:
+   data.username
+   data.password
+   data.description
+   data.expected_error
+→ Use data.description for test names
+
+URL RULES - CRITICAL:
+→ First two constants must be:
+   const APP_URL = '{url}';
+   const LOGIN_URL = `${{APP_URL}}/login`;
+→ Use LOGIN_URL for all navigateTo()
+→ Use APP_URL for post-login checks
+→ Never write '...' for URLs
+→ Never write 'example.com'
+→ Never write saucedemo URL
+→ Never hardcode any URL
+→ Always use APP_URL or LOGIN_URL
+
+METHOD RULES - CRITICAL:
+→ Never use enterEmail()
+→ Never use enterUsername()
+→ Never use enterPassword()
+→ Never use clickLoginButton()
+→ Never use getDashboardElement()
+→ Never invent method names
+→ Never hardcode credentials
+→ Always use data.username
+→ Always use data.password
+→ Always use these methods ONLY:
+   loginPage.navigateTo(APP_URL)
+   loginPage.fillInputByIndex(0, data.username)
+   loginPage.fillInputByIndex(1, data.password)
+   loginPage.clickSubmit()
+   loginPage.isErrorVisibleByIndex(0)
+   loginPage.getErrorMessageByIndex(0)
+
+METHOD RULES:
+→ Use loginPage.clickLoginButton()
+→ Use inventoryPage.inventoryContainer
+→ Never use getDashboardElement()
+→ Never invent method names
 
 Return ONLY complete spec.js.
 Nothing else."""
             }
         ]
     )
-    return message.content[0].text
-
+    return clean_code(message.content[0].text)
 
 def generate_playwright_tests(
     user_story: str,

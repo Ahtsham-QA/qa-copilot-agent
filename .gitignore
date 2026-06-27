@@ -4,3 +4,7 @@ __pycache__/
 *.pyc
 .DS_Store
 .env.example
+generated/
+node_modules/
+test-results/
+playwright-report/

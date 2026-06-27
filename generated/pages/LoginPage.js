@@ -1,53 +1,33 @@
-
-const { expect } = require('@playwright/test');
-
 class LoginPage {
   constructor(page) {
     this.page = page;
-    this.url = 'https://www.saucedemo.com';
-    this.usernameInput = '[data-test="username"]';
-    this.passwordInput = '[data-test="password"]';
-    this.loginButton = '[data-test="login-button"]';
-    this.errorMessage = '[data-test="error"]';
-    this.inventoryContainer = '[data-test="inventory-container"]';
+    this.inputs = page.locator('input:visible');
+    this.submitButton = page.locator(
+      'button[type="submit"], input[type="submit"]'
+    ).first();
+    this.errorMessages = page.locator(
+      '[class*="error"], [class*="alert"], .alert-danger'
+    );
   }
 
-  async navigate() {
-    await this.page.goto(this.url);
+  async navigateTo(url) {
+    await this.page.goto(url);
   }
 
-  async fillUsername(username) {
-    await this.page.fill(this.usernameInput, username);
+  async fillInputByIndex(index, value) {
+    await this.inputs.nth(index).fill(value);
   }
 
-  async fillPassword(password) {
-    await this.page.fill(this.passwordInput, password);
+  async clickSubmit() {
+    await this.submitButton.click();
   }
 
-  async clickLogin() {
-    await this.page.click(this.loginButton);
+  async getErrorMessageByIndex(index) {
+    return await this.errorMessages.nth(index).textContent();
   }
 
-  async login(username, password) {
-    await this.fillUsername(username);
-    await this.fillPassword(password);
-    await this.clickLogin();
-  }
-
-  async getErrorMessage() {
-    return await this.page.textContent(this.errorMessage);
-  }
-
-  async assertLoggedIn() {
-    await expect(this.page).toHaveURL(/inventory/);
-    await expect(this.page.locator(this.inventoryContainer)).toBeVisible();
-  }
-
-  async assertErrorVisible(expectedText) {
-    await expect(this.page.locator(this.errorMessage)).toBeVisible();
-    if (expectedText) {
-      await expect(this.page.locator(this.errorMessage)).toContainText(expectedText);
-    }
+  async isErrorVisibleByIndex(index) {
+    return await this.errorMessages.nth(index).isVisible();
   }
 }
 

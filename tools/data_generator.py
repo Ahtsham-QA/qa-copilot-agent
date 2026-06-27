@@ -9,61 +9,82 @@ client = anthropic.Anthropic(
     api_key=os.getenv("ANTHROPIC_API_KEY")
 )
 
-FALLBACK_DATA = {
-    "valid_data": [
-        {
-            "username": "standard_user",
-            "password": "secret_sauce",
-            "description": "Valid login with correct credentials",
-            "expected_title": "Products"
-        }
-    ],
-    "invalid_data": [
-        {
-            "username": "wrong_user",
-            "password": "wrong_pass",
-            "description": "Invalid credentials",
-            "expected_error": "Username and password do not match"
-        },
-        {
-            "username": "",
-            "password": "",
-            "description": "Empty fields",
-            "expected_error": "Username is required"
-        }
-    ],
-    "edge_cases": [
-        {
-            "username": "locked_out_user",
-            "password": "secret_sauce",
-            "description": "Locked out user",
-            "expected": "failure"
-        }
-    ]
-}
-
 
 def generate_test_data(
     user_story: str,
-    test_cases: str
+    test_cases: str,
+    credentials: dict = None
 ) -> dict:
     """
-    Generates structured test data as JSON.
-    Falls back to safe default if JSON is invalid.
+    Generates test data as JSON.
+    Uses provided credentials if given.
+    Falls back to safe defaults if JSON fails.
     """
 
-    system_prompt = """You are a QA test data specialist.
+    # Build credentials context
+    cred_context = ""
+    if credentials:
+        cred_context = f"""
+USE THESE EXACT CREDENTIALS:
+→ Valid username: {credentials['valid']['username']}
+→ Valid password: {credentials['valid']['password']}
+→ Invalid username: {credentials['invalid']['username']}
+→ Invalid password: {credentials['invalid']['password']}
+"""
+        if credentials.get('locked'):
+            cred_context += f"→ Locked username: {credentials['locked']['username']}\n"
+
+        cred_context += """
+RULES FOR CREDENTIALS:
+→ Use ONLY provided credentials
+→ Never invent other usernames
+→ Never generate email addresses
+   unless provided credentials
+   are email addresses
+→ Use exact values provided
+"""
+
+    system_prompt = f"""You are a QA test data specialist.
 Generate test data as valid JSON only.
 No explanation. No markdown. Just JSON.
 
-STRICT LIMITS:
-→ Maximum 3 items in valid_data array
-→ Maximum 3 items in invalid_data array
-→ Maximum 2 items in edge_cases array
-→ Keep all strings short and simple
-→ Must be 100% complete valid JSON
-→ Never leave strings unterminated
-→ Never truncate output"""
+{cred_context}
+
+STRICT RULES:
+→ Maximum 3 items in valid_data
+→ Maximum 3 items in invalid_data
+→ Maximum 2 items in edge_cases
+→ Keep descriptions short
+→ Must be complete valid JSON
+→ Never truncate mid-string
+
+JSON Structure:
+{{
+  "valid_data": [
+    {{
+      "username": "...",
+      "password": "...",
+      "description": "...",
+      "expected_title": "..."
+    }}
+  ],
+  "invalid_data": [
+    {{
+      "username": "...",
+      "password": "...",
+      "description": "...",
+      "expected_error": "..."
+    }}
+  ],
+  "edge_cases": [
+    {{
+      "username": "...",
+      "password": "...",
+      "description": "...",
+      "expected": "failure"
+    }}
+  ]
+}}"""
 
     message = client.messages.create(
         model="claude-sonnet-4-6",
@@ -77,7 +98,6 @@ User Story: {user_story}
 Test Cases: {test_cases}
 
 Maximum 3 items per array.
-Short strings only.
 Must be complete valid JSON.
 Return ONLY JSON. Nothing else."""
             }
@@ -86,22 +106,61 @@ Return ONLY JSON. Nothing else."""
     )
 
     response_text = message.content[0].text
-
-    # Clean markdown
     response_text = response_text.replace(
         "```json", ""
     ).replace("```", "").strip()
 
-    # Try parsing JSON
     try:
         data = json.loads(response_text)
         print("  ✅ Test data generated successfully")
         return data
 
     except json.JSONDecodeError as e:
-        print(f"  ⚠️ JSON truncated: {e}")
+        print(f"  ⚠️ JSON parse error: {e}")
         print("  → Using fallback test data")
-        return FALLBACK_DATA
+
+        # Build fallback from provided credentials
+        username = credentials['valid']['username'] \
+            if credentials else "test_user"
+        password = credentials['valid']['password'] \
+            if credentials else "Test@123"
+        inv_username = credentials['invalid']['username'] \
+            if credentials else "wrong_user"
+        inv_password = credentials['invalid']['password'] \
+            if credentials else "WrongPass"
+
+        return {
+            "valid_data": [
+                {
+                    "username": username,
+                    "password": password,
+                    "description": "Valid credentials",
+                    "expected_title": "Dashboard"
+                }
+            ],
+            "invalid_data": [
+                {
+                    "username": inv_username,
+                    "password": inv_password,
+                    "description": "Invalid credentials",
+                    "expected_error": "Invalid username or password"
+                },
+                {
+                    "username": "",
+                    "password": "",
+                    "description": "Empty fields",
+                    "expected_error": "Username is required"
+                }
+            ],
+            "edge_cases": [
+                {
+                    "username": username,
+                    "password": password.upper(),
+                    "description": "Wrong password case",
+                    "expected": "failure"
+                }
+            ]
+        }
 
 
 def save_test_data(
@@ -109,7 +168,7 @@ def save_test_data(
     filename: str = "test_data.json"
 ) -> str:
     """
-    Saves test data to JSON file.
+    Saves test data to JSON file
     """
     output_dir = "generated/test-data"
     os.makedirs(output_dir, exist_ok=True)
@@ -121,12 +180,3 @@ def save_test_data(
 
     print(f"  ✅ Test data saved: {filepath}")
     return filepath
-
-
-if __name__ == "__main__":
-    sample_story = "user can add items to cart"
-    sample_cases = "TC01: add single item, TC02: add multiple items"
-
-    data = generate_test_data(sample_story, sample_cases)
-    save_test_data(data)
-    print(json.dumps(data, indent=2))

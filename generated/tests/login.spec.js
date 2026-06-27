@@ -1,60 +1,45 @@
-
 const { test, expect } = require('@playwright/test');
 const LoginPage = require('../pages/LoginPage');
+const testData = require('../test-data/test_data.json');
 
-test.describe('Add Items to Cart', () => {
+const APP_URL = 'https://automationexercise.com';
+const LOGIN_URL = `${APP_URL}/login`;
 
-  test.beforeEach(async ({ page }) => {
-    const loginPage = new LoginPage(page);
-    await loginPage.navigate();
-    await loginPage.login('standard_user', 'secret_sauce');
+test.describe('Login - Valid Credentials', () => {
+  testData.valid_data.forEach((data) => {
+    test(data.description, async ({ page }) => {
+      const loginPage = new LoginPage(page);
+      await loginPage.navigateTo(LOGIN_URL);
+      await loginPage.fillInputByIndex(0, data.username);
+      await loginPage.fillInputByIndex(1, data.password);
+      await loginPage.clickSubmit();
+      await expect(page).not.toHaveURL(LOGIN_URL);
+    });
   });
+});
 
-  test('TC1: Add two items and verify cart count', 
-  async ({ page }) => {
-    const addButtons = page.locator('[data-test^="add-to-cart"]');
-    
-    await addButtons.first().click();
-    await expect(
-      page.locator('.shopping_cart_badge')
-    ).toHaveText('1');
-    
-    await addButtons.first().click();
-    await expect(
-      page.locator('.shopping_cart_badge')
-    ).toHaveText('2');
-    
-    await page.locator('.shopping_cart_link').click();
-    await expect(page).toHaveURL(
-      'https://www.saucedemo.com/cart.html'
-    );
-    await expect(
-      page.locator('.cart_item')
-    ).toHaveCount(2);
+test.describe('Login - Invalid Credentials', () => {
+  testData.invalid_data.forEach((data) => {
+    test(data.description, async ({ page }) => {
+      const loginPage = new LoginPage(page);
+      await loginPage.navigateTo(LOGIN_URL);
+      await loginPage.fillInputByIndex(0, data.username);
+      await loginPage.fillInputByIndex(1, data.password);
+      await loginPage.clickSubmit();
+      await expect(page).toHaveURL(LOGIN_URL);
+    });
   });
+});
 
-  test('TC2: Verify correct items in cart', 
-  async ({ page }) => {
-    const addButtons = page.locator(
-      '[data-test^="add-to-cart"]'
-    );
-    await addButtons.first().click();
-    await addButtons.nth(1).click();
-    await page.locator('.shopping_cart_link').click();
-    await expect(
-      page.locator('.cart_item')
-    ).toHaveCount(2);
+test.describe('Login - Edge Cases', () => {
+  testData.edge_cases.forEach((data) => {
+    test(data.description, async ({ page }) => {
+      const loginPage = new LoginPage(page);
+      await loginPage.navigateTo(LOGIN_URL);
+      await loginPage.fillInputByIndex(0, data.username);
+      await loginPage.fillInputByIndex(1, data.password);
+      await loginPage.clickSubmit();
+      await expect(page).toHaveURL(LOGIN_URL);
+    });
   });
-
-  test('TC3: No login redirects to login page', 
-  async ({ page }) => {
-    await page.context().clearCookies();
-    await page.goto(
-      'https://www.saucedemo.com/inventory.html'
-    );
-    await expect(page).toHaveURL(
-      'https://www.saucedemo.com/'
-    );
-  });
-
 });

@@ -1,49 +1,44 @@
 {
   "valid_data": [
     {
-      "username": "standard_user",
-      "password": "secret_sauce",
-      "description": "Add two items with valid user",
-      "expected_title": "Products",
-      "item1": "sauce-labs-backpack",
-      "item2": "sauce-labs-bike-light"
-    },
-    {
-      "username": "performance_glitch_user",
-      "password": "secret_sauce",
-      "description": "Add two items with glitch user",
-      "expected_title": "Products",
-      "item1": "sauce-labs-backpack",
-      "item2": "sauce-labs-bike-light"
-    },
-    {
-      "username": "standard_user",
-      "password": "secret_sauce",
-      "description": "Add two items and verify cart count",
-      "expected_title": "Products",
-      "item1": "sauce-labs-fleece-jacket",
-      "item2": "sauce-labs-onesie"
+      "username": "yourtest@gmail.com",
+      "password": "Test@1234",
+      "description": "Successful login with valid credentials",
+      "expected_title": "Dashboard or Home Page"
     }
   ],
   "invalid_data": [
     {
-      "username": "",
-      "password": "",
-      "description": "Empty credentials cannot add to cart",
-      "expected_error": "Username is required"
+      "username": "yourtest@gmail.com",
+      "password": "Wrongpass",
+      "description": "Login fails with invalid password",
+      "expected_error": "Invalid email or password"
     },
     {
-      "username": "locked_out_user",
-      "password": "secret_sauce",
-      "description": "Locked user cannot add to cart",
-      "expected_error": "Sorry, this user has been locked out"
+      "username": "wrong@email.com",
+      "password": "Test@1234",
+      "description": "Login fails with unregistered email",
+      "expected_error": "Invalid email or password"
+    },
+    {
+      "username": "",
+      "password": "",
+      "description": "Login fails with empty email and password",
+      "expected_error": "Email is required and Password is required"
     }
   ],
   "edge_cases": [
     {
-      "username": "standard_user",
-      "password": "secret_sauce",
-      "description": "Cart persists after page refresh"
+      "username": "YOURTEST@GMAIL.COM",
+      "password": "Test@1234",
+      "description": "Login with email in uppercase letters",
+      "expected": "failure"
+    },
+    {
+      "username": "yourtest@gmail.com",
+      "password": "",
+      "description": "Login fails with valid email but empty password",
+      "expected": "failure"
     }
   ]
 }

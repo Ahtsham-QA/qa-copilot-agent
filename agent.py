@@ -52,10 +52,63 @@ def get_app_url() -> str:
     print("\n🌐 Enter app URL to test")
     print("(Press Enter to skip — uses SauceDemo):\n")
     url = input().strip()
-    return url if url else "https://www.saucedemo.com"
+    return url if url else "..."
 
 
-def run_agent(user_story: str, url: str):
+def get_app_credentials():
+    """
+    Gets test credentials from user
+    Works for any application
+    """
+    print("\n" + "="*60)
+    print("🔐 TEST CREDENTIALS SETUP")
+    print("="*60)
+    print("Enter credentials for your application.\n")
+
+    valid_username = input(
+        "✅ Valid username/email: "
+    ).strip()
+
+    valid_password = input(
+        "✅ Valid password: "
+    ).strip()
+
+    print("\nFor negative tests:")
+    
+    invalid_username = input(
+        "❌ Invalid username/email: "
+    ).strip() or "wrong_user@test.com"
+
+    invalid_password = input(
+        "❌ Invalid password: "
+    ).strip() or "WrongPass123"
+
+    locked_username = input(
+        "🔒 Locked/blocked username (or Enter to skip): "
+    ).strip() or None
+
+    print("="*60)
+
+    return {
+        "valid": {
+            "username": valid_username,
+            "password": valid_password,
+            "description": "Valid credentials"
+        },
+        "invalid": {
+            "username": invalid_username,
+            "password": invalid_password,
+            "description": "Invalid credentials"
+        },
+        "locked": {
+            "username": locked_username,
+            "password": valid_password,
+            "description": "Locked account"
+        } if locked_username else None
+    }
+
+
+def run_agent(user_story: str, url: str, credentials: dict):
     """
     Main agent pipeline v2.0:
     1. Generate test cases
@@ -90,13 +143,15 @@ def run_agent(user_story: str, url: str):
     print("="*60)
     playwright_files = save_playwright_tests(playwright_tests)
 
-     # STEP 3.5 — Generate Test Data
+     
+    # STEP 3.5 — Generate Test Data
     print("\n" + "="*60)
     print("📊 STEP 3.5: Generating test data...")
     print("="*60)
     test_data = generate_test_data(
         user_story,
-        test_cases
+        test_cases,
+        credentials  # NEW - pass credentials
     )
     data_file = save_test_data(test_data)
     print(f"  ✅ Test data: {data_file}")
@@ -143,10 +198,10 @@ if __name__ == "__main__":
     print(BANNER)
 
     user_story = get_user_story()
-
     if not user_story:
         print("❌ No user story provided. Exiting.")
         sys.exit(1)
 
     url = get_app_url()
-    run_agent(user_story, url)
+    credentials = get_app_credentials()
+    run_agent(user_story, url, credentials)
