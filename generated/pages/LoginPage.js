@@ -2,12 +2,10 @@ class LoginPage {
   constructor(page) {
     this.page = page;
     this.inputs = page.locator('input:visible');
-    this.submitButton = page.locator(
-      'button[type="submit"], input[type="submit"]'
-    ).first();
-    this.errorMessages = page.locator(
-      '[class*="error"], [class*="alert"], .alert-danger'
-    );
+    this.submitButton = page.locator('[type="submit"]');
+    this.errorMessages = page.locator('[data-test*="error"]');
+    this.errorIcons = page.locator('.error-message-container');
+    this.formContainer = page.locator('form');
   }
 
   async navigateTo(url) {
@@ -23,11 +21,19 @@ class LoginPage {
   }
 
   async getErrorMessageByIndex(index) {
-    return await this.errorMessages.nth(index).textContent();
+    return await this.errorMessages.nth(index).innerText();
   }
 
   async isErrorVisibleByIndex(index) {
     return await this.errorMessages.nth(index).isVisible();
+  }
+
+  async getInputCount() {
+    return await this.inputs.count();
+  }
+
+  async getPageTitle() {
+    return await this.page.title();
   }
 }
 

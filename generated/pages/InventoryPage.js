@@ -1,37 +1,30 @@
+const { expect } = require('@playwright/test');
+
 class InventoryPage {
   constructor(page) {
     this.page = page;
-    this.productCards = page.locator('.product-image-wrapper');
-    this.addToCartButtons = page.locator('[class*="add-to-cart"]');
-    this.productTitles = page.locator('.productinfo h2');
-    this.productPrices = page.locator('.productinfo h2').locator('..').locator('p');
-    this.viewProductButtons = page.locator('a[href*="/product_details/"]');
-    this.inputs = page.locator('input');
-    this.submitButtons = page.locator('[type="submit"]');
-    this.errorMessages = page.locator('.error-message, [class*="error"], .alert');
-    this.formFields = page.locator('input, textarea, select');
-    this.modalButtons = page.locator('.modal-footer button, .modal-body a');
+    this.inputs = page.locator('input:visible');
+    this.addToCartButtons = page.locator('[data-test^="add-to-cart"]');
+    this.removeButtons = page.locator('[data-test^="remove"]');
+    this.inventoryItems = page.locator('.inventory_item');
+    this.itemPrices = page.locator('.inventory_item_price');
+    this.itemNames = page.locator('.inventory_item_name');
+    this.sortDropdown = page.locator('[data-test="product_sort_container"]');
+    this.cartIcon = page.locator('.shopping_cart_link');
+    this.errorMessages = page.locator('[data-test="error"]');
+    this.submitButton = page.locator('[type="submit"]');
   }
 
   async navigateTo(url) {
     await this.page.goto(url);
   }
 
-  async addItemByIndex(index) {
-    await this.productCards.nth(index).hover();
-    await this.addToCartButtons.nth(index).click();
-  }
-
-  async viewProductByIndex(index) {
-    await this.viewProductButtons.nth(index).click();
-  }
-
   async fillInputByIndex(index, value) {
-    await this.formFields.nth(index).fill(value);
+    await this.inputs.nth(index).fill(value);
   }
 
   async clickSubmit() {
-    await this.submitButtons.first().click();
+    await this.submitButton.click();
   }
 
   async getErrorMessageByIndex(index) {
@@ -42,8 +35,16 @@ class InventoryPage {
     return await this.errorMessages.nth(index).isVisible();
   }
 
-  async clickModalButtonByIndex(index) {
-    await this.modalButtons.nth(index).click();
+  async addItemByIndex(index) {
+    await this.addToCartButtons.nth(index).click();
+  }
+
+  async removeItemByIndex(index) {
+    await this.removeButtons.nth(index).click();
+  }
+
+  async sortItemsBy(value) {
+    await this.sortDropdown.selectOption(value);
   }
 }
 

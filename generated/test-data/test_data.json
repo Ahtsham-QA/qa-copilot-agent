@@ -1,43 +1,49 @@
 {
   "valid_data": [
     {
-      "username": "yourtest@gmail.com",
-      "password": "Test@1234",
-      "description": "Successful login with valid credentials",
-      "expected_title": "Dashboard or Home Page"
+      "username": "standard_user",
+      "password": "secret_sauce",
+      "description": "Valid credentials login",
+      "expected_title": "Dashboard/Home page"
+    },
+    {
+      "username": "standard_user",
+      "password": "secret_sauce",
+      "description": "Password field masks characters",
+      "expected_title": "Password displayed as dots or asterisks"
     }
   ],
   "invalid_data": [
     {
-      "username": "yourtest@gmail.com",
-      "password": "Wrongpass",
-      "description": "Login fails with invalid password",
+      "username": "standard_user",
+      "password": "wrong_pass",
+      "description": "Valid username with invalid password",
       "expected_error": "Invalid email or password"
     },
     {
-      "username": "wrong@email.com",
-      "password": "Test@1234",
-      "description": "Login fails with unregistered email",
+      "username": "wrong_user",
+      "password": "secret_sauce",
+      "description": "Unregistered username with valid password",
       "expected_error": "Invalid email or password"
     },
     {
       "username": "",
       "password": "",
-      "description": "Login fails with empty email and password",
-      "expected_error": "Email is required and Password is required"
+      "description": "Empty username and password fields",
+      "expected_error": "Username is required and Password is required"
     }
   ],
   "edge_cases": [
     {
-      "username": "YOURTEST@GMAIL.COM",
-      "password": "Test@1234",
-      "description": "Login with email in uppercase letters",
+      "username": "standard_user",
+      "password": "",
+      "description": "Valid username with empty password",
       "expected": "failure"
     },
     {
-      "username": "yourtest@gmail.com",
-      "password": "",
-      "description": "Login fails with valid email but empty password",
+      "username": "' OR '1'='1' --",
+      "password": "wrong_pass",
+      "description": "SQL injection in username field",
       "expected": "failure"
     }
   ]
