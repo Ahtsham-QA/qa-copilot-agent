@@ -4,46 +4,28 @@
       "username": "standard_user",
       "password": "secret_sauce",
       "description": "Valid credentials login",
-      "expected_title": "Dashboard/Home page"
-    },
-    {
-      "username": "standard_user",
-      "password": "secret_sauce",
-      "description": "Password field masks characters",
-      "expected_title": "Password displayed as dots or asterisks"
+      "expected_title": "Products"
     }
   ],
   "invalid_data": [
     {
-      "username": "standard_user",
-      "password": "wrong_pass",
-      "description": "Valid username with invalid password",
-      "expected_error": "Invalid email or password"
-    },
-    {
       "username": "wrong_user",
-      "password": "secret_sauce",
-      "description": "Unregistered username with valid password",
-      "expected_error": "Invalid email or password"
+      "password": "wrong_pass",
+      "description": "Invalid credentials login fails",
+      "expected_error": "Username and password do not match"
     },
     {
       "username": "",
       "password": "",
-      "description": "Empty username and password fields",
-      "expected_error": "Username is required and Password is required"
+      "description": "Empty fields login fails",
+      "expected_error": "Username is required"
     }
   ],
   "edge_cases": [
     {
-      "username": "standard_user",
-      "password": "",
-      "description": "Valid username with empty password",
-      "expected": "failure"
-    },
-    {
-      "username": "' OR '1'='1' --",
-      "password": "wrong_pass",
-      "description": "SQL injection in username field",
+      "username": "locked_out_user",
+      "password": "secret_sauce",
+      "description": "Locked user login fails",
       "expected": "failure"
     }
   ]

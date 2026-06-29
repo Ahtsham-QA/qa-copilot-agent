@@ -1,39 +1,40 @@
 class LoginPage {
   constructor(page) {
     this.page = page;
-    this.inputs = page.locator('input:visible');
-    this.submitButton = page.locator('[type="submit"]');
-    this.errorMessages = page.locator('[data-test*="error"]');
-    this.errorIcons = page.locator('.error-message-container');
-    this.formContainer = page.locator('form');
+    this.usernameInput = page.getByRole('textbox').first();
+    this.passwordInput = page.locator('input[type="password"]');
+    this.submitButton = page.getByRole('button').first();
+    this.errorMessages = page.locator(
+      '[data-test="error"], .error, [class*="error"], [role="alert"]'
+    );
   }
 
   async navigateTo(url) {
     await this.page.goto(url);
+    await this.page.waitForLoadState('networkidle');
   }
 
   async fillInputByIndex(index, value) {
-    await this.inputs.nth(index).fill(value);
+    if (index === 0) {
+      await this.usernameInput.waitFor({ state: 'visible' });
+      await this.usernameInput.fill(value);
+    } else {
+      await this.passwordInput.waitFor({ state: 'visible' });
+      await this.passwordInput.fill(value);
+    }
   }
 
   async clickSubmit() {
+    await this.submitButton.waitFor({ state: 'visible' });
     await this.submitButton.click();
   }
 
   async getErrorMessageByIndex(index) {
-    return await this.errorMessages.nth(index).innerText();
+    return await this.errorMessages.nth(index).textContent();
   }
 
   async isErrorVisibleByIndex(index) {
     return await this.errorMessages.nth(index).isVisible();
-  }
-
-  async getInputCount() {
-    return await this.inputs.count();
-  }
-
-  async getPageTitle() {
-    return await this.page.title();
   }
 }
 

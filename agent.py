@@ -18,8 +18,8 @@ load_dotenv()
 
 BANNER = """
 ╔══════════════════════════════════════════════════════════╗
-║           🤖 QA COPILOT AGENT v2.0                      ║
-║     AI-Powered Test Case Generator + Jira Logger        ║
+║               🤖 TestGen AI v2.0                        ║
+║     AI-Powered Test Suite Generator + Jira Logger       ║
 ║     Built by: Ahtsham Ijaz | github.com/Ahtsham-QA     ║
 ╚══════════════════════════════════════════════════════════╝
 """

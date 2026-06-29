@@ -45,41 +45,42 @@ App URL: {url}
 Rules:
 → CommonJS module.exports syntax
 → constructor(page) with this.page = page
-→ Use GENERIC selectors not specific item names
+→ Use getByRole selectors:
+   this.usernameInput = page.getByRole('textbox').first()
+   this.passwordInput = page.locator('input[type="password"]')
+   this.submitButton = page.getByRole('button').first()
+   this.errorMessages = page.locator('[data-test="error"], .error, [class*="error"], [role="alert"]')
 → No individual item methods
-→ Use index-based methods instead
 → Maximum 10 selectors total
 → Maximum 8 methods total
 → No markdown backticks
 → No ``` in output
 → Pure JavaScript only
-→ Always include these methods:
-   navigateTo(url)
-   fillInputByIndex(index, value)
-   clickSubmit()
-   getErrorMessageByIndex(index)
-   isErrorVisibleByIndex(index)
-   → Never use .clear() before .fill()
-→ fillInputByIndex must only use .fill() not .clear()
-→ Example: await this.inputs.nth(index).fill(value)
-→ Never add .clear() before .fill()
-→ Always use input:visible not input
-→ this.inputs = page.locator('input:visible')
-→ Use generic index based selectors
-→ Never specific item selectors
+→ Never use .clear() before .fill()
+→ Always include these exact methods:
+
+   async navigateTo(url) {{
+     await this.page.goto(url);
+     await this.page.waitForLoadState('networkidle');
+   }}
+
+   async fillInputByIndex(index, value) {{
+     if (index === 0) {{
+       await this.usernameInput.waitFor({{ state: 'visible' }});
+       await this.usernameInput.fill(value);
+     }} else {{
+       await this.passwordInput.waitFor({{ state: 'visible' }});
+       await this.passwordInput.fill(value);
+     }}
+   }}
+
+   async clickSubmit() {{
+     await this.submitButton.waitFor({{ state: 'visible' }});
+     await this.submitButton.click();
+   }}
+
 → Works on ANY web application
 → Last line: module.exports = {class_name};
-
-GOOD EXAMPLE (generic):
-this.addToCartButtons = page.locator('[data-test^="add-to-cart"]');
-
-async addItemByIndex(index) {{
-  await this.addToCartButtons.nth(index).click();
-}}
-
-BAD EXAMPLE (too specific):
-this.addSauceLabsBackpackButton = page.locator(...)
-this.addSauceLabsBikeLightButton = page.locator(...)
 
 Return ONLY the JavaScript class.
 Nothing else."""
@@ -87,8 +88,6 @@ Nothing else."""
         ]
     )
     return clean_code(message.content[0].text)
-            
-    
 
 
 def generate_spec_file(
@@ -134,16 +133,18 @@ Rules:
 → Use data.description for test names
 
 URL RULES - CRITICAL:
-→ First two constants must be:
+→ ONLY ONE URL constant allowed:
    const APP_URL = '{url}';
-   const LOGIN_URL = `${{APP_URL}}/login`;
-→ Use LOGIN_URL for all navigateTo()
-→ Use APP_URL for post-login checks
+→ NEVER create LOGIN_URL variable
+→ NEVER append /login to any URL
+→ URL provided is already the login URL
+→ Use APP_URL for ALL navigateTo() calls
+→ Use APP_URL for ALL toHaveURL() checks
+→ Never modify APP_URL in any way
 → Never write '...' for URLs
 → Never write 'example.com'
-→ Never write saucedemo URL
 → Never hardcode any URL
-→ Always use APP_URL or LOGIN_URL
+→ Only use APP_URL throughout entire file
 
 METHOD RULES - CRITICAL:
 → Never use enterEmail()
