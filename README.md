@@ -1,4 +1,4 @@
-# 🤖 QA Copilot Agent
+# TestGen AI
 
 An AI-powered universal QA automation agent that generates professional 
 Playwright test cases, POM structure, test data, and Jira tickets 
@@ -78,7 +78,7 @@ Agent automatically creates:
 
 ## Project Structure
 
-qa-copilot-agent/
+testgen-ai/
 ├── agent.py                    # Main entry point
 ├── tools/
 │   ├── test_generator.py       # Claude AI test case generator
@@ -212,7 +212,7 @@ For licensing inquiries contact:
 
 **Ahtsham Ijaz** — QA Automation Lead & AI QA Consultant
 
-- 8 years QA experience | 5 years lead roles
+- 7+ years QA experience | 5 years lead roles
 - Specializing in AI-assisted test automation
 - Available for QA consulting projects
 

@@ -1,12 +1,10 @@
 class LoginPage {
   constructor(page) {
     this.page = page;
-    this.usernameInput = page.getByRole('textbox').first();
-    this.passwordInput = page.locator('input[type="password"]');
-    this.submitButton = page.getByRole('button').first();
-    this.errorMessages = page.locator(
-      '[data-test="error"], .error, [class*="error"], [role="alert"]'
-    );
+    this.usernameInput = page.locator('input[type="text"], input[type="email"], #user-name, #email, input[name="username"]').first();
+    this.passwordInput = page.locator('input[type="password"]').first();
+    this.submitButton = page.locator('button[type="submit"], input[type="submit"], #login-button, button:has-text("Login"), button:has-text("Sign in")').first();
+    this.errorMessages = page.locator('[data-test="error"], .error, [class*="error"], [role="alert"], .alert-danger').first();
   }
 
   async navigateTo(url) {
@@ -30,11 +28,11 @@ class LoginPage {
   }
 
   async getErrorMessageByIndex(index) {
-    return await this.errorMessages.nth(index).textContent();
+    return await this.errorMessages.textContent();
   }
 
   async isErrorVisibleByIndex(index) {
-    return await this.errorMessages.nth(index).isVisible();
+    return await this.errorMessages.isVisible();
   }
 }
 

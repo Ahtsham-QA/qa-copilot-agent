@@ -1,12 +1,10 @@
 import streamlit as st
 import os
 import json
+import shutil
 from dotenv import load_dotenv
 from tools.test_generator import generate_test_cases
-from tools.playwright_gen import (
-    generate_playwright_tests,
-    save_playwright_tests
-)
+from tools.playwright_gen import generate_playwright_tests
 from tools.jira_tool import log_test_cases_to_jira
 from tools.data_generator import (
     generate_test_data,
@@ -115,6 +113,105 @@ with col5:
 
 st.markdown("---")
 
+# Helper functions
+def copy_templates(actual_login_url: str) -> list:
+    """
+    Copies template files to generated folder.
+    Updates APP_URL in spec.js.
+    Returns list of copied files.
+    """
+    template_dir = "templates"
+    pages_dir = "generated/pages"
+    tests_dir = "generated/tests"
+
+    os.makedirs(pages_dir, exist_ok=True)
+    os.makedirs(tests_dir, exist_ok=True)
+
+    copied = []
+
+    # Copy LoginPage.js
+    if os.path.exists(f"{template_dir}/LoginPage.js"):
+        shutil.copy(
+            f"{template_dir}/LoginPage.js",
+            f"{pages_dir}/LoginPage.js"
+        )
+        copied.append(f"{pages_dir}/LoginPage.js")
+
+    # Copy InventoryPage.js
+    if os.path.exists(f"{template_dir}/InventoryPage.js"):
+        shutil.copy(
+            f"{template_dir}/InventoryPage.js",
+            f"{pages_dir}/InventoryPage.js"
+        )
+        copied.append(f"{pages_dir}/InventoryPage.js")
+
+    # Copy spec.js and update APP_URL
+    if os.path.exists(f"{template_dir}/login.spec.js"):
+        with open(f"{template_dir}/login.spec.js", 'r') as f:
+            spec_content = f.read()
+
+        # Replace APP_URL with actual URL
+        spec_content = spec_content.replace(
+            "process.env.APP_URL || 'https://www.saucedemo.com'",
+            f"'{actual_login_url}'"
+        )
+
+        with open(f"{tests_dir}/login.spec.js", 'w') as f:
+            f.write(spec_content)
+
+        copied.append(f"{tests_dir}/login.spec.js")
+
+    return copied
+
+
+def generate_config(
+    run_chrome: bool,
+    run_firefox: bool,
+    run_safari: bool
+) -> str:
+    """Generates playwright.config.js"""
+    config_projects = []
+
+    if run_chrome:
+        config_projects.append("""
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    }""")
+    if run_firefox:
+        config_projects.append("""
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+    }""")
+    if run_safari:
+        config_projects.append("""
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+    }""")
+
+    projects_str = ','.join(config_projects)
+
+    return f"""const {{ defineConfig, devices }} = require('@playwright/test');
+
+module.exports = defineConfig({{
+  testDir: './tests',
+  use: {{
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+    trace: 'on-first-retry',
+  }},
+  reporter: [
+    ['html', {{ open: 'never' }}],
+    ['list']
+  ],
+  projects: [{projects_str}
+  ],
+}});
+"""
+
+
 # Generate Button
 if st.button("🚀 Generate Everything", type="primary"):
 
@@ -154,8 +251,10 @@ if st.button("🚀 Generate Everything", type="primary"):
 
         # STEP 1 — Test Cases
         status.text("📋 Generating test cases...")
-        test_cases = generate_test_cases(feature)
-        progress.progress(20)
+        test_cases = generate_test_cases(
+            feature,
+            credentials  # ← pass credentials
+        )
 
         # STEP 2 — Test Data
         status.text("📊 Generating test data...")
@@ -167,64 +266,47 @@ if st.button("🚀 Generate Everything", type="primary"):
         save_test_data(test_data)
         progress.progress(40)
 
-        # STEP 3 — Playwright Tests
-        playwright_content = {}
+        # STEP 3 — Playwright Tests from Templates
+        copied_files = []
         config_content = ""
 
         if gen_playwright:
-            status.text("🎭 Generating Playwright tests...")
-            playwright_content = generate_playwright_tests(
-                feature,
-                test_cases,
-                actual_login_url  # ← fixed
+            status.text("🎭 Copying Playwright templates...")
+
+            # Copy templates with correct URL
+            copied_files = copy_templates(actual_login_url)
+
+            # Read template content for display
+            login_page_content = ""
+            inventory_page_content = ""
+            spec_content = ""
+
+            if os.path.exists("generated/pages/LoginPage.js"):
+                with open("generated/pages/LoginPage.js") as f:
+                    login_page_content = f.read()
+
+            if os.path.exists("generated/pages/InventoryPage.js"):
+                with open("generated/pages/InventoryPage.js") as f:
+                    inventory_page_content = f.read()
+
+            if os.path.exists("generated/tests/login.spec.js"):
+                with open("generated/tests/login.spec.js") as f:
+                    spec_content = f.read()
+
+            # Generate config
+            config_content = generate_config(
+                run_chrome,
+                run_firefox,
+                run_safari
             )
-            save_playwright_tests(playwright_content)
 
-            # Generate playwright.config.js
-            config_projects = []
-            if run_chrome:
-                config_projects.append("""
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    }""")
-            if run_firefox:
-                config_projects.append("""
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    }""")
-            if run_safari:
-                config_projects.append("""
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    }""")
-
-            projects_str = ','.join(config_projects)
-
-            config_content = f"""const {{ defineConfig, devices }} = require('@playwright/test');
-
-module.exports = defineConfig({{
-  testDir: './tests',
-  use: {{
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
-    trace: 'on-first-retry',
-  }},
-  reporter: [
-    ['html', {{ open: 'never' }}],
-    ['list']
-  ],
-  projects: [{projects_str}
-  ],
-}});
-"""
             # Save config
-            config_path = 'generated/playwright.config.js'
-            with open(config_path, 'w') as f:
+            with open('generated/playwright.config.js', 'w') as f:
                 f.write(config_content)
-            st.success("✅ playwright.config.js generated!")
+
+            st.success(
+                f"✅ {len(copied_files)} template files copied!"
+            )
 
         progress.progress(60)
 
@@ -247,9 +329,7 @@ module.exports = defineConfig({{
             export_to_markdown(
                 user_story=feature,
                 test_cases=test_cases,
-                playwright_tests=playwright_content.get(
-                    "spec", ""
-                ),
+                playwright_tests=spec_content if gen_playwright else "",
                 jira_tickets=created_issues
             )
         progress.progress(100)
@@ -267,7 +347,7 @@ module.exports = defineConfig({{
             st.markdown(test_cases)
 
         # Playwright Tests
-        if gen_playwright and playwright_content:
+        if gen_playwright and copied_files:
             with st.expander("🎭 View Playwright Tests"):
                 tab1, tab2, tab3 = st.tabs([
                     "spec.js",
@@ -275,41 +355,32 @@ module.exports = defineConfig({{
                     "InventoryPage.js"
                 ])
                 with tab1:
-                    st.code(
-                        playwright_content.get("spec", ""),
-                        language="javascript"
-                    )
+                    st.code(spec_content, language="javascript")
                 with tab2:
-                    st.code(
-                        playwright_content.get("LoginPage", ""),
-                        language="javascript"
-                    )
+                    st.code(login_page_content, language="javascript")
                 with tab3:
-                    st.code(
-                        playwright_content.get("InventoryPage", ""),
-                        language="javascript"
-                    )
+                    st.code(inventory_page_content, language="javascript")
 
             # Download buttons
             col6, col7, col8 = st.columns(3)
             with col6:
                 st.download_button(
                     "⬇️ Download spec.js",
-                    playwright_content.get("spec", ""),
+                    spec_content,
                     "login.spec.js",
                     "text/javascript"
                 )
             with col7:
                 st.download_button(
                     "⬇️ Download LoginPage.js",
-                    playwright_content.get("LoginPage", ""),
+                    login_page_content,
                     "LoginPage.js",
                     "text/javascript"
                 )
             with col8:
                 st.download_button(
                     "⬇️ Download InventoryPage.js",
-                    playwright_content.get("InventoryPage", ""),
+                    inventory_page_content,
                     "InventoryPage.js",
                     "text/javascript"
                 )

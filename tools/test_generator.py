@@ -6,39 +6,56 @@ load_dotenv()
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
-def generate_test_cases(user_story: str) -> str:
-    """
-    Takes a user story and generates structured test cases
-    with test data but without Playwright code.
-    """
+def generate_test_cases(
+    user_story: str,
+    credentials: dict = None  # ADD THIS
+) -> str:
 
-    system_prompt = """You are a senior QA engineer. When given a user story, 
-generate professional test cases in EXACTLY this format:
+    # Build credentials context
+    cred_info = ""
+    if credentials:
+        cred_info = f"""
+REAL CREDENTIALS TO USE IN TEST CASES:
+Valid username: {credentials['valid']['username']}
+Valid password: {credentials['valid']['password']}
+Invalid username: {credentials['invalid']['username']}
+Invalid password: {credentials['invalid']['password']}
+
+RULES:
+→ Use ONLY these credentials in test data
+→ Never invent fake emails
+→ Never invent fake passwords
+→ Maximum 4 test cases total
+→ 1 positive, 2 negative, 1 edge case
+"""
+
+    system_prompt = f"""You are a senior QA engineer.
+{cred_info}
+When given a user story generate professional
+test cases in EXACTLY this format:
 
 ## TEST CASE 1: [Test Case Title]
 - Type: [Positive/Negative/Edge Case]
 - Priority: [High/Medium/Low]
-- Preconditions: [What must be true before test runs]
+- Preconditions: [What must be true]
 - Test Data:
-  * [Field name]: [Value]
-  * [Field name]: [Value]
+  * Username: [use provided credentials]
+  * Password: [use provided credentials]
 - Steps:
   1. [Step 1]
   2. [Step 2]
-  3. [Step 3]
 - Expected Result: [What should happen]
 
 ---
 
 STRICT RULES:
-1. Always generate minimum 5 test cases
-2. Include at least one Positive, two Negative, one Edge Case
-3. Always include realistic Test Data (emails, passwords, names, amounts etc)
-4. If no test data is needed for a step write "N/A"
-5. DO NOT include any Playwright code or any code at all
-6. DO NOT repeat the user story in output
-7. Keep steps clear and simple enough for any QA to execute manually
-8. Be specific with test data — use realistic values not placeholders"""
+1. Maximum 4 test cases only
+2. 1 Positive, 2 Negative, 1 Edge Case
+3. Use ONLY provided credentials
+4. Never invent fake emails
+5. Never use placeholder@example.com
+6. Steps must be clear and executable
+7. No Playwright code"""
 
     message = client.messages.create(
         model="claude-sonnet-4-6",

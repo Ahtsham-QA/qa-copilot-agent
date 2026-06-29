@@ -4,7 +4,7 @@
       "username": "standard_user",
       "password": "secret_sauce",
       "description": "Valid credentials login",
-      "expected_title": "Products"
+      "expected_title": "Dashboard"
     }
   ],
   "invalid_data": [
@@ -12,20 +12,20 @@
       "username": "wrong_user",
       "password": "wrong_pass",
       "description": "Invalid credentials login fails",
-      "expected_error": "Username and password do not match"
+      "expected_error": "Invalid credentials"
     },
     {
       "username": "",
       "password": "",
       "description": "Empty fields login fails",
-      "expected_error": "Username is required"
+      "expected_error": "Required"
     }
   ],
   "edge_cases": [
     {
-      "username": "locked_out_user",
+      "username": "STANDARD_USER",
       "password": "secret_sauce",
-      "description": "Locked user login fails",
+      "description": "Uppercase username test",
       "expected": "failure"
     }
   ]

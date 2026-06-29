@@ -45,11 +45,12 @@ App URL: {url}
 Rules:
 → CommonJS module.exports syntax
 → constructor(page) with this.page = page
-→ Use getByRole selectors:
-   this.usernameInput = page.getByRole('textbox').first()
-   this.passwordInput = page.locator('input[type="password"]')
-   this.submitButton = page.getByRole('button').first()
-   this.errorMessages = page.locator('[data-test="error"], .error, [class*="error"], [role="alert"]')
+→ Use aria locators wherever possible:
+   this.usernameInput = page.getByRole('textbox', {{ name: /username/i }})
+   this.passwordInput = page.getByLabel(/password/i)
+   this.submitButton = page.getByRole('button', {{ name: /login/i }})
+   this.errorMessages = page.getByRole('alert')
+→ Fall back to CSS only when aria not available
 → No individual item methods
 → Maximum 10 selectors total
 → Maximum 8 methods total
@@ -77,6 +78,14 @@ Rules:
    async clickSubmit() {{
      await this.submitButton.waitFor({{ state: 'visible' }});
      await this.submitButton.click();
+   }}
+
+   async getErrorMessageByIndex(index) {{
+     return await this.errorMessages.nth(index).textContent();
+   }}
+
+   async isErrorVisibleByIndex(index) {{
+     return await this.errorMessages.nth(index).isVisible();
    }}
 
 → Works on ANY web application
@@ -205,9 +214,12 @@ def generate_playwright_tests(
 
 def save_playwright_tests(content: dict) -> list:
     """
-    Saves each file separately.
-    Returns list of saved file paths.
+    Saves playwright tests.
+    Uses templates for page classes.
+    Only generates spec.js dynamically.
     """
+    import shutil
+
     output_dir = "generated"
     pages_dir = os.path.join(output_dir, "pages")
     tests_dir = os.path.join(output_dir, "tests")
@@ -217,25 +229,32 @@ def save_playwright_tests(content: dict) -> list:
 
     saved_files = []
 
-    # Save LoginPage.js
-    login_path = os.path.join(pages_dir, "LoginPage.js")
-    with open(login_path, "w") as f:
-        f.write(content["LoginPage"])
-    print(f"  ✅ Saved: {login_path}")
-    saved_files.append(login_path)
+    # Copy template page classes (don't regenerate)
+    template_dir = "templates"
 
-    # Save InventoryPage.js
-    inventory_path = os.path.join(pages_dir, "InventoryPage.js")
-    with open(inventory_path, "w") as f:
-        f.write(content["InventoryPage"])
-    print(f"  ✅ Saved: {inventory_path}")
-    saved_files.append(inventory_path)
+    if os.path.exists(f"{template_dir}/LoginPage.js"):
+        shutil.copy(
+            f"{template_dir}/LoginPage.js",
+            f"{pages_dir}/LoginPage.js"
+        )
+        print(f"  ✅ Saved: {pages_dir}/LoginPage.js (from template)")
+        saved_files.append(f"{pages_dir}/LoginPage.js")
 
-    # Save spec.js
-    spec_path = os.path.join(tests_dir, "login.spec.js")
-    with open(spec_path, "w") as f:
-        f.write(content["spec"])
-    print(f"  ✅ Saved: {spec_path}")
-    saved_files.append(spec_path)
+    if os.path.exists(f"{template_dir}/InventoryPage.js"):
+        shutil.copy(
+            f"{template_dir}/InventoryPage.js",
+            f"{pages_dir}/InventoryPage.js"
+        )
+        print(f"  ✅ Saved: {pages_dir}/InventoryPage.js (from template)")
+        saved_files.append(f"{pages_dir}/InventoryPage.js")
+
+    # Use template spec.js (reads from JSON)
+    if os.path.exists(f"{template_dir}/login.spec.js"):
+        shutil.copy(
+            f"{template_dir}/login.spec.js",
+            f"{tests_dir}/login.spec.js"
+        )
+        print(f"  ✅ Saved: {tests_dir}/login.spec.js (from template)")
+        saved_files.append(f"{tests_dir}/login.spec.js")
 
     return saved_files
