@@ -1,10 +1,10 @@
 import streamlit as st
 import os
 import json
+import re
 import shutil
 from dotenv import load_dotenv
 from tools.test_generator import generate_test_cases
-from tools.playwright_gen import generate_playwright_tests
 from tools.jira_tool import log_test_cases_to_jira
 from tools.data_generator import (
     generate_test_data,
@@ -39,6 +39,18 @@ with col1:
         "🌐 Application URL",
         placeholder="https://your-app.com"
     )
+
+    app_profile = st.selectbox(
+        "🎯 App Profile",
+        [
+            "Auto-detect (default)",
+            "SauceDemo",
+            "OrangeHRM",
+            "Generic / Other App"
+        ],
+        help="Select a known app for guaranteed compatibility, or use Generic for new apps"
+    )
+
     feature = st.text_area(
         "📝 Feature Description",
         placeholder="user can login with valid credentials",
@@ -113,14 +125,44 @@ with col5:
 
 st.markdown("---")
 
+
+# ============================================================
 # Helper functions
-def copy_templates(actual_login_url: str) -> list:
+# ============================================================
+
+def get_profile_folder(app_profile: str, app_url: str) -> str:
     """
-    Copies template files to generated folder.
-    Updates APP_URL in spec.js.
-    Returns list of copied files.
+    Maps the dropdown selection to a template folder name.
+    Auto-detects known apps from the URL when set to auto-detect.
     """
-    template_dir = "templates"
+    if app_profile == "SauceDemo":
+        return "saucedemo"
+    elif app_profile == "OrangeHRM":
+        return "orangehrm"
+    elif app_profile == "Generic / Other App":
+        return "default"
+    else:
+        if "saucedemo" in app_url.lower():
+            return "saucedemo"
+        elif "orangehrm" in app_url.lower():
+            return "orangehrm"
+        else:
+            return "default"
+
+
+def copy_templates(
+    actual_login_url: str,
+    app_profile: str,
+    app_url: str
+) -> list:
+    """
+    Copies template files from the correct profile folder
+    into the generated folder, and injects the actual login URL
+    into the copied spec.js file.
+    """
+    profile_folder = get_profile_folder(app_profile, app_url)
+    template_dir = f"templates/{profile_folder}"
+
     pages_dir = "generated/pages"
     tests_dir = "generated/tests"
 
@@ -129,7 +171,6 @@ def copy_templates(actual_login_url: str) -> list:
 
     copied = []
 
-    # Copy LoginPage.js
     if os.path.exists(f"{template_dir}/LoginPage.js"):
         shutil.copy(
             f"{template_dir}/LoginPage.js",
@@ -137,7 +178,6 @@ def copy_templates(actual_login_url: str) -> list:
         )
         copied.append(f"{pages_dir}/LoginPage.js")
 
-    # Copy InventoryPage.js
     if os.path.exists(f"{template_dir}/InventoryPage.js"):
         shutil.copy(
             f"{template_dir}/InventoryPage.js",
@@ -145,15 +185,14 @@ def copy_templates(actual_login_url: str) -> list:
         )
         copied.append(f"{pages_dir}/InventoryPage.js")
 
-    # Copy spec.js and update APP_URL
     if os.path.exists(f"{template_dir}/login.spec.js"):
         with open(f"{template_dir}/login.spec.js", 'r') as f:
             spec_content = f.read()
 
-        # Replace APP_URL with actual URL
-        spec_content = spec_content.replace(
-            "process.env.APP_URL || 'https://www.saucedemo.com'",
-            f"'{actual_login_url}'"
+        spec_content = re.sub(
+            r"const APP_URL = .*?;",
+            f"const APP_URL = '{actual_login_url}';",
+            spec_content
         )
 
         with open(f"{tests_dir}/login.spec.js", 'w') as f:
@@ -161,6 +200,7 @@ def copy_templates(actual_login_url: str) -> list:
 
         copied.append(f"{tests_dir}/login.spec.js")
 
+    st.info(f"📁 Using profile: **{profile_folder}**")
     return copied
 
 
@@ -169,7 +209,7 @@ def generate_config(
     run_firefox: bool,
     run_safari: bool
 ) -> str:
-    """Generates playwright.config.js"""
+    """Generates playwright.config.js based on selected browsers."""
     config_projects = []
 
     if run_chrome:
@@ -212,10 +252,12 @@ module.exports = defineConfig({{
 """
 
 
+# ============================================================
 # Generate Button
+# ============================================================
+
 if st.button("🚀 Generate Everything", type="primary"):
 
-    # Validation
     if not feature:
         st.error("❌ Please enter a feature description")
     elif not app_url:
@@ -223,7 +265,6 @@ if st.button("🚀 Generate Everything", type="primary"):
     elif not valid_username or not valid_password:
         st.error("❌ Please enter valid credentials")
     else:
-        # Build actual login URL
         if login_path:
             actual_login_url = app_url.rstrip('/') + login_path
         else:
@@ -231,7 +272,6 @@ if st.button("🚀 Generate Everything", type="primary"):
 
         st.info(f"🔗 Login URL: {actual_login_url}")
 
-        # Build credentials
         credentials = {
             "valid": {
                 "username": valid_username,
@@ -245,18 +285,16 @@ if st.button("🚀 Generate Everything", type="primary"):
             }
         }
 
-        # Progress bar
         progress = st.progress(0)
         status = st.empty()
 
-        # STEP 1 — Test Cases
         status.text("📋 Generating test cases...")
         test_cases = generate_test_cases(
             feature,
-            credentials  # ← pass credentials
+            credentials
         )
+        progress.progress(20)
 
-        # STEP 2 — Test Data
         status.text("📊 Generating test data...")
         test_data = generate_test_data(
             feature,
@@ -266,20 +304,20 @@ if st.button("🚀 Generate Everything", type="primary"):
         save_test_data(test_data)
         progress.progress(40)
 
-        # STEP 3 — Playwright Tests from Templates
         copied_files = []
         config_content = ""
+        login_page_content = ""
+        inventory_page_content = ""
+        spec_content = ""
 
         if gen_playwright:
             status.text("🎭 Copying Playwright templates...")
 
-            # Copy templates with correct URL
-            copied_files = copy_templates(actual_login_url)
-
-            # Read template content for display
-            login_page_content = ""
-            inventory_page_content = ""
-            spec_content = ""
+            copied_files = copy_templates(
+                actual_login_url,
+                app_profile,
+                app_url
+            )
 
             if os.path.exists("generated/pages/LoginPage.js"):
                 with open("generated/pages/LoginPage.js") as f:
@@ -293,14 +331,12 @@ if st.button("🚀 Generate Everything", type="primary"):
                 with open("generated/tests/login.spec.js") as f:
                     spec_content = f.read()
 
-            # Generate config
             config_content = generate_config(
                 run_chrome,
                 run_firefox,
                 run_safari
             )
 
-            # Save config
             with open('generated/playwright.config.js', 'w') as f:
                 f.write(config_content)
 
@@ -310,7 +346,6 @@ if st.button("🚀 Generate Everything", type="primary"):
 
         progress.progress(60)
 
-        # STEP 4 — Jira Tickets
         created_issues = []
         if gen_jira:
             status.text("🎫 Creating Jira tickets...")
@@ -323,7 +358,6 @@ if st.button("🚀 Generate Everything", type="primary"):
                 st.warning(f"⚠️ Jira error: {str(e)}")
         progress.progress(80)
 
-        # STEP 5 — Report
         if gen_report:
             status.text("📄 Generating report...")
             export_to_markdown(
@@ -339,14 +373,11 @@ if st.button("🚀 Generate Everything", type="primary"):
         st.success("🎉 Everything generated successfully!")
         st.markdown("---")
 
-        # Results Section
         st.subheader("📊 Results")
 
-        # Test Cases
         with st.expander("📋 View Test Cases", expanded=True):
             st.markdown(test_cases)
 
-        # Playwright Tests
         if gen_playwright and copied_files:
             with st.expander("🎭 View Playwright Tests"):
                 tab1, tab2, tab3 = st.tabs([
@@ -361,7 +392,6 @@ if st.button("🚀 Generate Everything", type="primary"):
                 with tab3:
                     st.code(inventory_page_content, language="javascript")
 
-            # Download buttons
             col6, col7, col8 = st.columns(3)
             with col6:
                 st.download_button(
@@ -385,7 +415,6 @@ if st.button("🚀 Generate Everything", type="primary"):
                     "text/javascript"
                 )
 
-            # Download config
             if config_content:
                 st.download_button(
                     "⬇️ Download playwright.config.js",
@@ -394,17 +423,14 @@ if st.button("🚀 Generate Everything", type="primary"):
                     "text/javascript"
                 )
 
-        # Jira Results
         if gen_jira and created_issues:
             st.subheader("🎫 Jira Tickets Created")
             for ticket in created_issues:
                 st.success(f"✅ {ticket}")
 
-        # Test Data
         with st.expander("📊 View Test Data JSON"):
             st.json(test_data)
 
-        # Full Report Download
         if gen_report:
             report = f"""# QA Report
 ## Feature: {feature}

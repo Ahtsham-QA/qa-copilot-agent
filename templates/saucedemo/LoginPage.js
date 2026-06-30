@@ -1,11 +1,10 @@
 class LoginPage {
   constructor(page) {
     this.page = page;
-    this.inputs = page.locator('input:visible');
-    this.usernameInput = this.inputs.nth(0);
-    this.passwordInput = this.inputs.nth(1);
-    this.submitButton = page.locator('button[type="submit"]');
-    this.errorMessages = page.locator('.oxd-alert-content, .oxd-input-field-error-message').first();
+    this.usernameInput = page.locator('#user-name');
+    this.passwordInput = page.locator('#password');
+    this.submitButton = page.locator('#login-button');
+    this.errorMessages = page.locator('[data-test="error"]');
   }
 
   async navigateTo(url) {
@@ -14,8 +13,13 @@ class LoginPage {
   }
 
   async fillInputByIndex(index, value) {
-    await this.inputs.nth(index).waitFor({ state: 'visible', timeout: 10000 });
-    await this.inputs.nth(index).fill(value);
+    if (index === 0) {
+      await this.usernameInput.waitFor({ state: 'visible', timeout: 10000 });
+      await this.usernameInput.fill(value);
+    } else {
+      await this.passwordInput.waitFor({ state: 'visible', timeout: 10000 });
+      await this.passwordInput.fill(value);
+    }
   }
 
   async clickSubmit() {

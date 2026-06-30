@@ -61,9 +61,9 @@ def generate_test_data(
         ],
         "edge_cases": [
             {
-                "username": upper_user,
+                "username": "' OR '1'='1",
                 "password": valid_pass,
-                "description": "Uppercase username test",
+                "description": "SQL injection attempt in username field",
                 "expected": "failure"
             }
         ]
@@ -71,7 +71,7 @@ def generate_test_data(
 
     print("  ✅ Test data generated with provided credentials")
     return test_data
-    
+
 def save_test_data(
     data: dict,
     filename: str = "test_data.json"

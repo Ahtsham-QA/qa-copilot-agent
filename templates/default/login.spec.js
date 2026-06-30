@@ -2,7 +2,7 @@ const { test, expect } = require('@playwright/test');
 const LoginPage = require('../pages/LoginPage');
 const testData = require('../test-data/test_data.json');
 
-const APP_URL = 'https://opensource-demo.orangehrmlive.com/web/index.php/auth/login';
+const APP_URL = process.env.APP_URL || 'https://example.com';
 
 test.describe('Login - Valid Credentials', () => {
   testData.valid_data.forEach((data) => {
@@ -13,7 +13,7 @@ test.describe('Login - Valid Credentials', () => {
       await loginPage.fillInputByIndex(1, data.password);
       await loginPage.clickSubmit();
       await page.waitForTimeout(2000);
-      await expect(page).not.toHaveURL(/auth\/login/);
+      await expect(page).not.toHaveURL(APP_URL);
     });
   });
 });

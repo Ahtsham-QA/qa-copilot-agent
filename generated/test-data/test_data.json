@@ -1,8 +1,8 @@
 {
   "valid_data": [
     {
-      "username": "standard_user",
-      "password": "secret_sauce",
+      "username": "Admin",
+      "password": "admin123",
       "description": "Valid credentials login",
       "expected_title": "Dashboard"
     }
@@ -23,9 +23,9 @@
   ],
   "edge_cases": [
     {
-      "username": "STANDARD_USER",
-      "password": "secret_sauce",
-      "description": "Uppercase username test",
+      "username": "' OR '1'='1",
+      "password": "admin123",
+      "description": "SQL injection attempt in username field",
       "expected": "failure"
     }
   ]
