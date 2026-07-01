@@ -14,14 +14,12 @@ from tools.markdown_export import export_to_markdown
 
 load_dotenv()
 
-# Page config
 st.set_page_config(
     page_title="TestGen AI",
     page_icon="🤖",
     layout="wide"
 )
 
-# Header
 st.title("🤖 TestGen AI")
 st.subheader("AI-Powered Universal Test Suite Generator")
 st.markdown(
@@ -30,7 +28,6 @@ st.markdown(
 )
 st.markdown("---")
 
-# Input Section
 col1, col2 = st.columns(2)
 
 with col1:
@@ -66,6 +63,18 @@ with col1:
             "Shopping Cart"
         ],
         help="Select the type of feature you want to test"
+    )
+
+    compliance_framework = st.selectbox(
+        "🏛️ Compliance Framework",
+        [
+            "None",
+            "PCI-DSS",
+            "HIPAA",
+            "SR 11-7",
+            "SOX"
+        ],
+        help="Select a regulatory framework to generate audit-ready traceability matrix"
     )
 
     login_path = st.text_input(
@@ -167,10 +176,8 @@ with col2:
 
 st.markdown("---")
 
-# Browser Options
 st.subheader("🌐 Browser Options")
 col_b1, col_b2, col_b3 = st.columns(3)
-
 with col_b1:
     run_chrome = st.checkbox("Chrome", value=True)
 with col_b2:
@@ -178,25 +185,14 @@ with col_b2:
 with col_b3:
     run_safari = st.checkbox("Safari", value=False)
 
-# Generate Options
 st.subheader("⚙️ Options")
 col3, col4, col5 = st.columns(3)
-
 with col3:
-    gen_playwright = st.checkbox(
-        "🎭 Playwright Tests",
-        value=True
-    )
+    gen_playwright = st.checkbox("🎭 Playwright Tests", value=True)
 with col4:
-    gen_jira = st.checkbox(
-        "🎫 Jira Tickets",
-        value=True
-    )
+    gen_jira = st.checkbox("🎫 Jira Tickets", value=True)
 with col5:
-    gen_report = st.checkbox(
-        "📄 Markdown Report",
-        value=True
-    )
+    gen_report = st.checkbox("📄 Markdown Report", value=True)
 
 st.markdown("---")
 
@@ -451,6 +447,21 @@ if st.button("🚀 Generate Everything", type="primary"):
                 playwright_tests=spec_content if gen_playwright else "",
                 jira_tickets=created_issues
             )
+
+        # Compliance Traceability Matrix
+        compliance_matrix = None
+        if compliance_framework != "None":
+            status.text("🏛️ Building compliance matrix...")
+            from tools.compliance.traceability import (
+                build_traceability_matrix,
+                format_matrix_report
+            )
+            compliance_matrix = build_traceability_matrix(
+                compliance_framework,
+                test_data,
+                feature
+            )
+
         progress.progress(100)
         status.text("✅ Complete!")
 
@@ -539,6 +550,64 @@ github.com/Ahtsham-QA/qa-copilot-agent
                 "text/markdown"
             )
 
+        # Compliance Matrix Results
+        if compliance_matrix:
+            st.markdown("---")
+            st.subheader("🏛️ Compliance Traceability Matrix")
+
+            cov = compliance_matrix["coverage"]
+            col_c1, col_c2, col_c3 = st.columns(3)
+            with col_c1:
+                st.metric("Framework", compliance_framework)
+            with col_c2:
+                st.metric(
+                    "Controls Covered",
+                    f"{cov['covered_controls']}/{cov['total_controls']}"
+                )
+            with col_c3:
+                st.metric(
+                    "Coverage",
+                    f"{cov['coverage_percent']}%"
+                )
+
+            with st.expander(
+                "📋 Test-to-Control Mappings",
+                expanded=True
+            ):
+                for m in compliance_matrix["mappings"]:
+                    if m["status"] == "Covered":
+                        st.success(
+                            f"✅ **{m['test']}**\n\n"
+                            f"Control: `{m['control_id']}` — "
+                            f"{m['control_title']}"
+                        )
+                    else:
+                        st.info(
+                            f"ℹ️ **{m['test']}**\n\n"
+                            f"Informational — no compliance control mapped"
+                        )
+
+            if cov["uncovered"]:
+                with st.expander(
+                    "⚠️ Compliance Gaps — Tests Needed",
+                    expanded=True
+                ):
+                    for u in cov["uncovered"]:
+                        st.warning(
+                            f"⚠️ **{u['id']}** — {u['title']}\n\n"
+                            f"No test currently covers this control. "
+                            f"Add a test to achieve full compliance coverage."
+                        )
+
+            from tools.compliance.traceability import format_matrix_report
+            matrix_report = format_matrix_report(compliance_matrix)
+            st.download_button(
+                "⬇️ Download Compliance Matrix (Audit Ready)",
+                matrix_report,
+                f"compliance_matrix_{compliance_framework}.txt",
+                "text/plain"
+            )
+
 
 # ============================================================
 # AI Failure Analyzer Section
@@ -588,7 +657,6 @@ if st.button(
             )
             report = format_report(analysis)
 
-        # Summary metrics
         col_m1, col_m2, col_m3 = st.columns(3)
         with col_m1:
             st.metric("Total Tests", analysis.get("total", 0))
@@ -597,7 +665,6 @@ if st.button(
         with col_m3:
             st.metric("❌ Failed", analysis.get("failed", 0))
 
-        # Bug tickets created
         if analysis.get("bug_tickets"):
             st.success(
                 f"🐛 Auto-created {len(analysis['bug_tickets'])} "
@@ -605,7 +672,6 @@ if st.button(
                 f"{', '.join(analysis['bug_tickets'])}"
             )
 
-        # Individual failure analyses
         if analysis.get("failures"):
             st.subheader("❌ AI Failure Analysis")
             for i, failure in enumerate(analysis["failures"], 1):
@@ -624,11 +690,8 @@ if st.button(
                             caption="📸 Failure Screenshot"
                         )
         else:
-            st.success(
-                "✅ All tests passing — nothing to analyze!"
-            )
+            st.success("✅ All tests passing — nothing to analyze!")
 
-        # Download full report
         st.download_button(
             "⬇️ Download Full Analysis Report",
             report,
