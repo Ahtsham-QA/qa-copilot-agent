@@ -48,7 +48,7 @@ with col1:
             "OrangeHRM",
             "Generic / Other App"
         ],
-        help="Select a known app for guaranteed compatibility, or use Generic for new apps"
+        help="Select a known app for guaranteed compatibility"
     )
 
     feature = st.text_area(
@@ -56,6 +56,18 @@ with col1:
         placeholder="user can login with valid credentials",
         height=120
     )
+
+    feature_type = st.selectbox(
+        "🔧 Feature Type",
+        [
+            "Login / Authentication",
+            "Search & Navigation",
+            "Form Submission",
+            "Shopping Cart"
+        ],
+        help="Select the type of feature you want to test"
+    )
+
     login_path = st.text_input(
         "🔗 Login Page Path (optional)",
         placeholder="/login or /signin — leave blank if login is at root URL",
@@ -68,27 +80,90 @@ with col1:
     )
 
 with col2:
-    st.subheader("🔐 Test Credentials")
-    valid_username = st.text_input(
-        "✅ Valid Username/Email",
-        placeholder="standard_user or email@example.com"
-    )
-    valid_password = st.text_input(
-        "✅ Valid Password",
-        placeholder="your password",
-        type="password"
-    )
-    invalid_username = st.text_input(
-        "❌ Invalid Username",
-        placeholder="wrong_user",
-        value="wrong_user"
-    )
-    invalid_password = st.text_input(
-        "❌ Invalid Password",
-        placeholder="wrong_pass",
-        value="wrong_pass",
-        type="password"
-    )
+    if feature_type == "Login / Authentication":
+        st.subheader("🔐 Test Credentials")
+        valid_username = st.text_input(
+            "✅ Valid Username/Email",
+            placeholder="standard_user or email@example.com"
+        )
+        valid_password = st.text_input(
+            "✅ Valid Password",
+            placeholder="your password",
+            type="password"
+        )
+        invalid_username = st.text_input(
+            "❌ Invalid Username",
+            placeholder="wrong_user",
+            value="wrong_user"
+        )
+        invalid_password = st.text_input(
+            "❌ Invalid Password",
+            placeholder="wrong_pass",
+            value="wrong_pass",
+            type="password"
+        )
+    else:
+        if feature_type == "Search & Navigation":
+            st.subheader("🔍 Search Terms")
+            valid_search = st.text_input(
+                "✅ Valid Search Term",
+                placeholder="e.g. laptop, shirt, John",
+                help="Something that exists on your app"
+            )
+            invalid_search = st.text_input(
+                "❌ Invalid Search Term",
+                placeholder="e.g. xyznotexist123",
+                value="xyznotexist123",
+                help="Something that won't return results"
+            )
+            valid_username = valid_search
+            invalid_username = invalid_search
+            valid_password = ""
+            invalid_password = ""
+
+        elif feature_type == "Form Submission":
+            st.subheader("📝 Form Data")
+            form_name = st.text_input(
+                "👤 Name Field Value",
+                placeholder="e.g. John Doe",
+                value="John Doe"
+            )
+            form_email = st.text_input(
+                "📧 Email Field Value",
+                placeholder="e.g. test@example.com",
+                value="test@example.com"
+            )
+            form_message = st.text_input(
+                "💬 Message Field Value",
+                placeholder="e.g. This is a test message",
+                value="This is a test message"
+            )
+            valid_username = form_name
+            valid_password = form_email
+            invalid_username = form_message
+            invalid_password = ""
+
+        elif feature_type == "Shopping Cart":
+            st.subheader("🛒 Cart Settings")
+            st.info(
+                "Agent will test adding, removing, "
+                "and updating cart items automatically."
+            )
+            valid_username = ""
+            valid_password = ""
+            invalid_username = ""
+            invalid_password = ""
+
+        else:
+            st.subheader("ℹ️ Feature Info")
+            st.info(
+                f"✅ Test data will be generated "
+                f"automatically for **{feature_type}**."
+            )
+            valid_username = ""
+            valid_password = ""
+            invalid_username = ""
+            invalid_password = ""
 
 st.markdown("---")
 
@@ -131,10 +206,6 @@ st.markdown("---")
 # ============================================================
 
 def get_profile_folder(app_profile: str, app_url: str) -> str:
-    """
-    Maps the dropdown selection to a template folder name.
-    Auto-detects known apps from the URL when set to auto-detect.
-    """
     if app_profile == "SauceDemo":
         return "saucedemo"
     elif app_profile == "OrangeHRM":
@@ -153,15 +224,27 @@ def get_profile_folder(app_profile: str, app_url: str) -> str:
 def copy_templates(
     actual_login_url: str,
     app_profile: str,
-    app_url: str
+    app_url: str,
+    feature_type: str = "Login / Authentication"
 ) -> list:
-    """
-    Copies template files from the correct profile folder
-    into the generated folder, and injects the actual login URL
-    into the copied spec.js file.
-    """
-    profile_folder = get_profile_folder(app_profile, app_url)
-    template_dir = f"templates/{profile_folder}"
+
+    feature_folder_map = {
+        "Login / Authentication": "login",
+        "Search & Navigation": "search",
+        "Form Submission": "form",
+        "Shopping Cart": "cart"
+    }
+    feature_folder = feature_folder_map.get(feature_type, "login")
+
+    if feature_type == "Login / Authentication":
+        profile_folder = get_profile_folder(app_profile, app_url)
+        template_dir = f"templates/{profile_folder}"
+        spec_name = "login.spec.js"
+        page_name = "LoginPage.js"
+    else:
+        template_dir = f"templates/features/{feature_folder}"
+        spec_name = f"{feature_folder}.spec.js"
+        page_name = f"{feature_folder.capitalize()}Page.js"
 
     pages_dir = "generated/pages"
     tests_dir = "generated/tests"
@@ -171,36 +254,45 @@ def copy_templates(
 
     copied = []
 
-    if os.path.exists(f"{template_dir}/LoginPage.js"):
+    if os.path.exists(f"{template_dir}/{page_name}"):
         shutil.copy(
-            f"{template_dir}/LoginPage.js",
-            f"{pages_dir}/LoginPage.js"
+            f"{template_dir}/{page_name}",
+            f"{pages_dir}/{page_name}"
         )
-        copied.append(f"{pages_dir}/LoginPage.js")
+        copied.append(f"{pages_dir}/{page_name}")
 
-    if os.path.exists(f"{template_dir}/InventoryPage.js"):
-        shutil.copy(
-            f"{template_dir}/InventoryPage.js",
-            f"{pages_dir}/InventoryPage.js"
-        )
-        copied.append(f"{pages_dir}/InventoryPage.js")
+    if feature_type == "Login / Authentication":
+        if os.path.exists(f"{template_dir}/InventoryPage.js"):
+            shutil.copy(
+                f"{template_dir}/InventoryPage.js",
+                f"{pages_dir}/InventoryPage.js"
+            )
+            copied.append(f"{pages_dir}/InventoryPage.js")
 
-    if os.path.exists(f"{template_dir}/login.spec.js"):
-        with open(f"{template_dir}/login.spec.js", 'r') as f:
+    spec_src = f"{template_dir}/{spec_name}"
+    if os.path.exists(spec_src):
+        with open(spec_src, 'r') as f:
             spec_content = f.read()
 
         spec_content = re.sub(
             r"const APP_URL = .*?;",
-            f"const APP_URL = '{actual_login_url}';",
+            f"const APP_URL = '{actual_login_url.strip()}';",
             spec_content
         )
 
-        with open(f"{tests_dir}/login.spec.js", 'w') as f:
+        with open(f"{tests_dir}/{spec_name}", 'w') as f:
             f.write(spec_content)
 
-        copied.append(f"{tests_dir}/login.spec.js")
+        copied.append(f"{tests_dir}/{spec_name}")
 
-    st.info(f"📁 Using profile: **{profile_folder}**")
+    if feature_type == "Login / Authentication":
+        st.info(
+            f"📁 Using profile: "
+            f"**{get_profile_folder(app_profile, app_url)}**"
+        )
+    else:
+        st.info(f"📁 Feature type: **{feature_type}**")
+
     return copied
 
 
@@ -209,7 +301,6 @@ def generate_config(
     run_firefox: bool,
     run_safari: bool
 ) -> str:
-    """Generates playwright.config.js based on selected browsers."""
     config_projects = []
 
     if run_chrome:
@@ -262,13 +353,14 @@ if st.button("🚀 Generate Everything", type="primary"):
         st.error("❌ Please enter a feature description")
     elif not app_url:
         st.error("❌ Please enter application URL")
-    elif not valid_username or not valid_password:
+    elif feature_type == "Login / Authentication" and \
+         (not valid_username or not valid_password):
         st.error("❌ Please enter valid credentials")
     else:
         if login_path:
-            actual_login_url = app_url.rstrip('/') + login_path
+            actual_login_url = app_url.strip().rstrip('/') + login_path.strip()
         else:
-            actual_login_url = app_url
+            actual_login_url = app_url.strip()
 
         st.info(f"🔗 Login URL: {actual_login_url}")
 
@@ -289,17 +381,12 @@ if st.button("🚀 Generate Everything", type="primary"):
         status = st.empty()
 
         status.text("📋 Generating test cases...")
-        test_cases = generate_test_cases(
-            feature,
-            credentials
-        )
+        test_cases = generate_test_cases(feature, credentials)
         progress.progress(20)
 
         status.text("📊 Generating test data...")
         test_data = generate_test_data(
-            feature,
-            test_cases,
-            credentials
+            feature, test_cases, credentials, feature_type
         )
         save_test_data(test_data)
         progress.progress(40)
@@ -316,7 +403,8 @@ if st.button("🚀 Generate Everything", type="primary"):
             copied_files = copy_templates(
                 actual_login_url,
                 app_profile,
-                app_url
+                app_url,
+                feature_type
             )
 
             if os.path.exists("generated/pages/LoginPage.js"):
@@ -332,9 +420,7 @@ if st.button("🚀 Generate Everything", type="primary"):
                     spec_content = f.read()
 
             config_content = generate_config(
-                run_chrome,
-                run_firefox,
-                run_safari
+                run_chrome, run_firefox, run_safari
             )
 
             with open('generated/playwright.config.js', 'w') as f:
@@ -351,8 +437,7 @@ if st.button("🚀 Generate Everything", type="primary"):
             status.text("🎫 Creating Jira tickets...")
             try:
                 created_issues = log_test_cases_to_jira(
-                    feature,
-                    test_cases
+                    feature, test_cases
                 )
             except Exception as e:
                 st.warning(f"⚠️ Jira error: {str(e)}")
@@ -453,6 +538,104 @@ github.com/Ahtsham-QA/qa-copilot-agent
                 "qa_report.md",
                 "text/markdown"
             )
+
+
+# ============================================================
+# AI Failure Analyzer Section
+# ============================================================
+st.markdown("---")
+st.subheader("🔍 AI Failure Analyzer")
+st.markdown(
+    "Run your generated tests and get AI-powered "
+    "plain English analysis of any failures — "
+    "with automatic Jira bug tickets created instantly."
+)
+
+col_fa1, col_fa2 = st.columns(2)
+with col_fa1:
+    analyze_url = st.text_input(
+        "🌐 App URL (for bug tickets)",
+        placeholder="https://your-app.com",
+        key="analyze_url"
+    )
+with col_fa2:
+    log_bugs_to_jira = st.checkbox(
+        "🎫 Auto-create Jira Bug Tickets",
+        value=True,
+        key="log_bugs"
+    )
+
+if st.button(
+    "🚀 Run Tests + Analyze Failures",
+    type="primary",
+    key="analyze_btn"
+):
+    if not analyze_url:
+        st.error("❌ Please enter the app URL")
+    else:
+        from tools.failure_analyzer import (
+            analyze_and_log_failures,
+            format_report
+        )
+
+        with st.spinner(
+            "🎭 Running tests and analyzing failures with AI..."
+        ):
+            analysis = analyze_and_log_failures(
+                app_url=analyze_url,
+                test_path="generated",
+                log_to_jira=log_bugs_to_jira
+            )
+            report = format_report(analysis)
+
+        # Summary metrics
+        col_m1, col_m2, col_m3 = st.columns(3)
+        with col_m1:
+            st.metric("Total Tests", analysis.get("total", 0))
+        with col_m2:
+            st.metric("✅ Passed", analysis.get("passed", 0))
+        with col_m3:
+            st.metric("❌ Failed", analysis.get("failed", 0))
+
+        # Bug tickets created
+        if analysis.get("bug_tickets"):
+            st.success(
+                f"🐛 Auto-created {len(analysis['bug_tickets'])} "
+                f"Jira bug tickets: "
+                f"{', '.join(analysis['bug_tickets'])}"
+            )
+
+        # Individual failure analyses
+        if analysis.get("failures"):
+            st.subheader("❌ AI Failure Analysis")
+            for i, failure in enumerate(analysis["failures"], 1):
+                with st.expander(
+                    f"❌ Failure {i}: {failure['test']}",
+                    expanded=True
+                ):
+                    st.markdown("**🤖 AI Analysis (Plain English):**")
+                    st.info(failure["analysis"])
+                    st.markdown("**Raw Error:**")
+                    st.code(failure["error"])
+                    if failure.get("screenshot") and \
+                       os.path.exists(failure["screenshot"]):
+                        st.image(
+                            failure["screenshot"],
+                            caption="📸 Failure Screenshot"
+                        )
+        else:
+            st.success(
+                "✅ All tests passing — nothing to analyze!"
+            )
+
+        # Download full report
+        st.download_button(
+            "⬇️ Download Full Analysis Report",
+            report,
+            "failure_analysis_report.txt",
+            "text/plain"
+        )
+
 
 # Footer
 st.markdown("---")

@@ -2,7 +2,7 @@ const { test, expect } = require('@playwright/test');
 const LoginPage = require('../pages/LoginPage');
 const testData = require('../test-data/test_data.json');
 
-const APP_URL = 'https://www.saucedemo.com';
+const APP_URL = process.env.APP_URL || 'https://www.saucedemo.com';
 
 test.describe('Login - Valid Credentials', () => {
   testData.valid_data.forEach((data) => {
