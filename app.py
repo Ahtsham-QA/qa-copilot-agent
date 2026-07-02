@@ -428,15 +428,42 @@ if st.button("🚀 Generate Everything", type="primary"):
 
         progress.progress(60)
 
+        # Compliance Traceability Matrix — build FIRST
+        compliance_matrix = None
+        if compliance_framework != "None":
+            status.text("🏛️ Building compliance matrix...")
+            from tools.compliance.traceability import (
+                build_traceability_matrix,
+                format_matrix_report
+            )
+            compliance_matrix = build_traceability_matrix(
+                compliance_framework,
+                test_data,
+                feature
+            )
+
         created_issues = []
         if gen_jira:
             status.text("🎫 Creating Jira tickets...")
             try:
                 created_issues = log_test_cases_to_jira(
-                    feature, test_cases
+                    feature,
+                    test_cases,
+                    compliance_framework,
+                    compliance_matrix
                 )
             except Exception as e:
                 st.warning(f"⚠️ Jira error: {str(e)}")
+        progress.progress(80)
+
+        if gen_report:
+            status.text("📄 Generating report...")
+            export_to_markdown(
+                user_story=feature,
+                test_cases=test_cases,
+                playwright_tests=spec_content if gen_playwright else "",
+                jira_tickets=created_issues
+            )
         progress.progress(80)
 
         if gen_report:
