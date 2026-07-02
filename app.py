@@ -616,14 +616,40 @@ github.com/Ahtsham-QA/qa-copilot-agent
 
             if cov["uncovered"]:
                 with st.expander(
-                    "⚠️ Compliance Gaps — Tests Needed",
+                    "⚠️ Compliance Gaps — Auto-Generated Tests",
                     expanded=True
                 ):
-                    for u in cov["uncovered"]:
+                    from tools.compliance.gap_filler import (
+                        generate_gap_tests,
+                        format_gap_tests_for_spec
+                    )
+
+                    gap_tests = generate_gap_tests(
+                        compliance_matrix,
+                        actual_login_url
+                    )
+
+                    for gap in gap_tests:
                         st.warning(
-                            f"⚠️ **{u['id']}** — {u['title']}\n\n"
-                            f"No test currently covers this control. "
-                            f"Add a test to achieve full compliance coverage."
+                            f"⚠️ **{gap['control_id']}** — "
+                            f"{gap['control_title']}"
+                        )
+                        st.markdown(
+                            f"**Required:** {gap['description']}"
+                        )
+                        st.code(
+                            gap['playwright_test'],
+                            language="javascript"
+                        )
+                        st.markdown("---")
+
+                    if gap_tests:
+                        gap_spec = format_gap_tests_for_spec(gap_tests)
+                        st.download_button(
+                            "⬇️ Download Gap Tests (Playwright)",
+                            gap_spec,
+                            f"compliance_gap_tests_{compliance_framework}.js",
+                            "text/javascript"
                         )
 
             from tools.compliance.traceability import format_matrix_report
